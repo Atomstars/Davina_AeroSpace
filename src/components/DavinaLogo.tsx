@@ -27,7 +27,7 @@ export default function DavinaLogo({ variant = 'nav' }: DavinaLogoProps) {
     };
 
     return (
-        <div className={`relative select-none z-50 ${isHero ? 'w-[400px] md:w-[600px] block mx-auto' : 'w-[140px] block'}`}>
+        <div className={`relative select-none z-50 ${isHero ? 'w-[320px] md:w-[480px] block mx-auto' : 'w-[140px] block'}`}>
             <motion.img
                 src={logoImage}
                 alt="DAVINA Aerospace"
