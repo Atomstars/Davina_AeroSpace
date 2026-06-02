@@ -65,49 +65,6 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
         return { dayMap: day, nightMap: night, cloudsMap: clouds, bumpMap: bump };
     }, [rawDayMap, rawNightMap, rawCloudsMap, rawBumpMap]);
 
-    const [satelliteNodes] = useState(() => {
-        return Array.from({ length: 7 }).map(() => ({
-            orbitIndex: Math.floor(Math.random() * 2),
-            angle: Math.random() * Math.PI * 2,
-            speed: 0.04 + Math.random() * 0.06,
-        }));
-    });
-
-    const orbitLines = useMemo(() => {
-        const createOrbitGeometry = (radius: number) => {
-            const segments = 160;
-            const points: THREE.Vector3[] = [];
-            for (let i = 0; i <= segments; i += 1) {
-                const angle = (i / segments) * Math.PI * 2;
-                points.push(new THREE.Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius));
-            }
-            return new THREE.BufferGeometry().setFromPoints(points);
-        };
-
-            return {
-            inner: createOrbitGeometry(7.1),
-            middle: createOrbitGeometry(7.6),
-        };
-    }, []);
-
-    const orbitMeshes = useMemo(() => {
-        const createOrbitLine = (geometry: THREE.BufferGeometry, color: number, opacity: number) => {
-            const material = new THREE.LineBasicMaterial({
-                color,
-                transparent: true,
-                opacity,
-                toneMapped: false,
-            });
-            const line = new THREE.Line(geometry, material);
-            return line;
-        };
-
-        return {
-            inner: createOrbitLine(orbitLines.inner, 0x22d3ee, 0.18),
-            middle: createOrbitLine(orbitLines.middle, 0x38bdf8, 0.16),
-        };
-    }, [orbitLines]);
-
     const latLonToVector3 = (lat: number, lon: number, radius: number) => {
         const phi = (90 - lat) * (Math.PI / 180);
         const theta = (lon + 180) * (Math.PI / 180);
@@ -147,7 +104,12 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
 
     useFrame((_, delta) => {
         const currentPointer = pointer ?? new THREE.Vector2(0, 0);
-        const hoverTilt = new THREE.Vector2(0.18 + currentPointer.y * 0.22, currentPointer.x * 0.22);
+        /*
+         * Cursor-responsive gyroscopic tilt: max 3.1° (0.055 rad).
+         * Satisfies requirement: "3°–5° maximum, no dramatic motion."
+         * Feels like mission-control display subtly tracking the operator.
+         */
+        const hoverTilt = new THREE.Vector2(0.18 + currentPointer.y * 0.055, currentPointer.x * 0.055);
         const dragTilt = new THREE.Vector2(dragOffset.current.y * 0.8, dragOffset.current.x * 0.9);
         const baseTilt = isDragging.current ? new THREE.Vector2(0.18, 0).add(dragTilt) : hoverTilt;
 
@@ -156,9 +118,11 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
 
         if (globeGroupRef.current) {
             gyroPhase.current += delta * 0.85;
-            globeGroupRef.current.rotation.y += delta * (showNavigation ? 0.006 : 0.03);
-            globeGroupRef.current.rotation.x = currentTilt.current.x + Math.sin(gyroPhase.current) * (showNavigation ? 0.01 : 0.03);
-            globeGroupRef.current.rotation.z = currentTilt.current.y + Math.sin(gyroPhase.current * 0.55) * (showNavigation ? 0.01 : 0.03);
+            // Slowed from 0.03 → 0.015: mission-control gyroscopic rotation, not showcase animation
+            globeGroupRef.current.rotation.y += delta * (showNavigation ? 0.005 : 0.015);
+            // Reduced wobble amplitude 0.03 → 0.015: authoritative slow gyro movement
+            globeGroupRef.current.rotation.x = currentTilt.current.x + Math.sin(gyroPhase.current) * (showNavigation ? 0.008 : 0.015);
+            globeGroupRef.current.rotation.z = currentTilt.current.y + Math.sin(gyroPhase.current * 0.55) * (showNavigation ? 0.008 : 0.015);
         }
         
         if (cloudsRef.current) {
@@ -171,16 +135,7 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
             ringsRef.current.rotation.z += delta * 0.01;
         }
 
-        satelliteOrbitRefs.current.forEach((orbitRef, idx) => {
-            const node = satelliteNodes[idx];
-            if (!orbitRef || !node) return;
-            orbitRef.rotation.z += delta * node.speed;
-        });
-
-        orbitLineRefs.current.forEach((line, idx) => {
-            if (!line || !(line.material instanceof THREE.LineBasicMaterial)) return;
-            line.material.opacity = 0.1 + 0.05 * Math.sin(Date.now() * 0.002 + idx);
-        });
+        // satelliteOrbitRefs logic removed
 
         navProgress.current = (navProgress.current + delta * 0.017) % 1;
         const navPoint = navRoute.curve.getPointAt(navProgress.current);
@@ -229,63 +184,102 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
             }}
         >
 
-            {/* REALISTIC EARTH BASE */}
+            {/* REALISTIC EARTH BASE — radius 9.0, brighter for planetary presence */}
             <mesh ref={earthRef}>
-                <sphereGeometry args={[6.5, 64, 64]} />
+                <sphereGeometry args={[9.0, 64, 64]} />
                 <meshStandardMaterial
-                    map={dayMap} 
-                    color="#586773"
-                    emissiveMap={nightMap} 
-                    emissive={new THREE.Color("#d79845")}
-                    emissiveIntensity={0.72}
-                    bumpMap={bumpMap} 
-                    bumpScale={0.38}
-                    roughness={0.82}
-                    metalness={0.08}
+                    color="#020813"
+                    emissiveMap={nightMap}
+                    emissive={new THREE.Color("#0ea5e9")}
+                    emissiveIntensity={4.0}
+                    bumpMap={bumpMap}
+                    bumpScale={0.32}
+                    roughness={0.72}
+                    metalness={0.06}
                 />
             </mesh>
 
-            {/* CLOUDS LAYER */}
+            {/*
+             * GEODESIC WIREFRAME OVERLAY
+             * Subtle triangulated mesh — aerospace tactical overlay.
+             * Slightly more visible to show Earth is instrumented.
+             */}
+            <mesh>
+                <icosahedronGeometry args={[9.07, 3]} />
+                <meshBasicMaterial
+                    color="#22d3ee"
+                    wireframe
+                    transparent
+                    opacity={0.040}
+                    toneMapped={false}
+                    depthWrite={false}
+                />
+            </mesh>
+
+            {/* CLOUDS LAYER — slightly more visible */}
             <mesh ref={cloudsRef} rotation={[0.2, 0, 0]}>
-                <sphereGeometry args={[6.53, 64, 64]} />
+                <sphereGeometry args={[9.06, 64, 64]} />
                 <meshStandardMaterial
                     map={cloudsMap}
                     transparent={true}
-                    opacity={0.16} 
+                    opacity={0.32}
                     blending={THREE.AdditiveBlending}
                     depthWrite={false}
                 />
             </mesh>
 
-            {/* ATMOSPHERIC HALO */}
+            {/* ATMOSPHERIC HALO — stronger glow for planetary horizon impact */}
             <mesh ref={atmosphereRef}>
-                <sphereGeometry args={[6.7, 64, 64]} />
-                <meshBasicMaterial 
-                    color="#4D90FE" 
-                    transparent 
-                    opacity={0.065} 
-                    side={THREE.BackSide} 
-                    blending={THREE.AdditiveBlending} 
+                <sphereGeometry args={[9.32, 64, 64]} />
+                <meshBasicMaterial
+                    color="#0ea5e9"
+                    transparent
+                    opacity={0.15}
+                    side={THREE.BackSide}
+                    blending={THREE.AdditiveBlending}
+                />
+            </mesh>
+            {/* Outer atmospheric scatter — enhanced */}
+            <mesh>
+                <sphereGeometry args={[9.55, 48, 48]} />
+                <meshBasicMaterial
+                    color="#0284c7"
+                    transparent
+                    opacity={0.06}
+                    side={THREE.BackSide}
+                    blending={THREE.AdditiveBlending}
                 />
             </mesh>
 
-            {/* TRUE 3D ORBITAL RINGS & SATELLITES */}
-            <group ref={ringsRef}>
-                <group rotation={[Math.PI / 2, 0, 0]}> 
+            {/* ORBITAL RINGS — 2 proper orbits with tiny satellites */}
+            <group ref={ringsRef} position={[0, 0, 0]} rotation={[0.2, 0, 0]}>
+                {/* Orbit 1 */}
+                <group rotation={[Math.PI / 2.1, 0, 0]}>
                     <mesh>
-                        <torusGeometry args={[7.1, 0.018, 16, 128]} />
-                        <meshBasicMaterial color="#17b7ff" transparent opacity={0.34} toneMapped={false} />
+                        <torusGeometry args={[10.5, 0.015, 16, 100]} />
+                        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.4} />
                     </mesh>
-                    <primitive object={orbitMeshes.inner} ref={(el: THREE.Line | null) => { if (el) orbitLineRefs.current[0] = el; }} />
+                    {/* Tiny glowing satellite on the orbit */}
+                    <mesh position={[10.5, 0, 0]}>
+                        <sphereGeometry args={[0.08, 16, 16]} />
+                        <meshBasicMaterial color="#ffffff" />
+                        <pointLight color="#0ea5e9" intensity={1} distance={2} />
+                    </mesh>
                 </group>
 
-                <group rotation={[0, Math.PI / 2, 0]}> 
+                {/* Orbit 2 */}
+                <group rotation={[Math.PI / 1.8, 0.4, 0]}>
                     <mesh>
-                        <torusGeometry args={[7.6, 0.018, 16, 128]} />
-                        <meshBasicMaterial color="#17b7ff" transparent opacity={0.28} toneMapped={false} />
+                        <torusGeometry args={[11.8, 0.012, 16, 100]} />
+                        <meshBasicMaterial color="#38bdf8" transparent opacity={0.3} />
                     </mesh>
-                    <primitive object={orbitMeshes.middle} ref={(el: THREE.Line | null) => { if (el) orbitLineRefs.current[1] = el; }} />
+                    {/* Tiny glowing satellite */}
+                    <mesh position={[-11.8, 0, 0]}>
+                        <sphereGeometry args={[0.06, 16, 16]} />
+                        <meshBasicMaterial color="#ffffff" />
+                    </mesh>
                 </group>
+            </group>
 
                 {showNavigation && (
                     <group rotation={[0.16, 0.55, 0]}> 
@@ -329,35 +323,7 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
                     </group>
                 )}
 
-                {/* ORBITING DRONES */}
-                {satelliteNodes.map((node, i) => {
-                    const radius = node.orbitIndex === 0 ? 7.1 : 7.6;
-                    const rot: [number, number, number] = node.orbitIndex === 0 ? [Math.PI / 2, 0, 0] : [0, Math.PI / 2, 0];
-                    
-                    return (
-                        <group key={i} rotation={rot} ref={(el) => { if (el) satelliteOrbitRefs.current[i] = el; }}>
-                            <group position={[Math.cos(node.angle) * radius, Math.sin(node.angle) * radius, 0]} scale={i % 3 === 0 ? 1.24 : 1}>
-                                <mesh rotation={[0, 0, Math.PI / 4]}>
-                                    <boxGeometry args={[0.18, 0.08, 0.08]} />
-                                    <meshStandardMaterial color="#cbd5e1" emissive="#0891b2" emissiveIntensity={0.35} roughness={0.45} metalness={0.22} />
-                                </mesh>
-                                <mesh position={[0.2, 0, 0]}>
-                                    <boxGeometry args={[0.24, 0.018, 0.1]} />
-                                    <meshBasicMaterial color="#38bdf8" transparent opacity={0.62} toneMapped={false} />
-                                </mesh>
-                                <mesh position={[-0.2, 0, 0]}>
-                                    <boxGeometry args={[0.24, 0.018, 0.1]} />
-                                    <meshBasicMaterial color="#38bdf8" transparent opacity={0.62} toneMapped={false} />
-                                </mesh>
-                                <mesh position={[0, -0.09, 0]}>
-                                    <coneGeometry args={[0.055, 0.16, 4]} />
-                                    <meshBasicMaterial color="#67e8f9" transparent opacity={0.72} toneMapped={false} />
-                                </mesh>
-                            </group>
-                        </group>
-                    );
-                })}
-            </group>
+                {/* Old orbiting satellites removed as they are now integrated into ringsRef */}
         </group>
     );
 }

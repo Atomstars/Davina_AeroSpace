@@ -1,8 +1,47 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;700;800&family=Inter:ital,wght@1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────
+   DESIGN TOKENS
+───────────────────────────────────────────── */
 :root {
   color-scheme: dark;
+
+  /* Colors */
+  --color-bg:          #000103;
+  --color-surface:     rgba(255, 255, 255, 0.04);
+  --color-surface-hover: rgba(255, 255, 255, 0.07);
+  --color-border:      rgba(255, 255, 255, 0.08);
+  --color-border-active: rgba(34, 211, 238, 0.3);
+  --color-accent-cyan: #22d3ee;
+  --color-accent-blue: #0ea5e9;
+  --color-accent-amber: #f59e0b;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted:  #475569;
+
+  /* Typography — Barlow for aerospace precision, Inter for body */
+  --font-display: 'Barlow', 'Inter', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'Barlow Condensed', 'JetBrains Mono', monospace;
+
+  /* Spacing scale */
+  --section-py-sm:  4rem;
+  --section-py-md:  6rem;
+  --section-py-lg:  8rem;
+
+  /* Radius */
+  --radius-card: 0.75rem;
+  --radius-btn:  0.375rem;
+}
+
+/* ─────────────────────────────────────────────
+   BASE RESET
+───────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 html,
@@ -11,69 +50,522 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: #000103;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
   overflow-x: hidden;
   scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+  /* Hide default cursor — AerospaceCursor renders the custom one */
+  cursor: none;
 }
 
-/* Ensures the React root element takes up the full screen */
+/* Restore cursor on touch devices where AerospaceCursor is not rendered */
+@media (hover: none) {
+  html, body, a, button {
+    cursor: auto;
+  }
+}
+
 #root {
   width: 100%;
   min-height: 100vh;
 }
 
+/* ─────────────────────────────────────────────
+   TYPOGRAPHY UTILITIES
+───────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-hud {
+  font-family: var(--font-mono);
+}
+
+/* Investor-grade heading scale using clamp */
+.heading-hero {
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 5vw, 4.5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.heading-section {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.5vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.heading-card {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.body-large {
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: var(--color-text-secondary);
+}
+
+.body-base {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-text-secondary);
+}
+
+/* Section labels — professional aerospace, not gaming */
+.label-mono {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(34, 211, 238, 0.7);
+}
+
+/* ─────────────────────────────────────────────
+   LEGACY LOGO FONTS (kept for compatibility)
+───────────────────────────────────────────── */
 .logo-font {
   font-family: 'Inter', sans-serif !important;
   font-weight: 900 !important;
   font-style: italic !important;
 }
 
-@font-face {
-  font-family: 'Gotham Web Bold';
-  src: local('Gotham Bold'), local('Gotham-Bold'), local('GothamBold');
-  font-weight: 700;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Gotham Web Medium';
-  src: local('Gotham Medium'), local('Gotham-Medium'), local('GothamMedium');
-  font-weight: 500;
-  font-style: normal;
-}
-
 .davina-logo-main {
-  font-family: 'Gotham Web Bold', 'Montserrat', sans-serif;
+  font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: 0.015em;
 }
 
 .davina-logo-sub {
-  font-family: 'Gotham Web Medium', 'Montserrat', sans-serif;
+  font-family: var(--font-display);
   font-weight: 500;
   letter-spacing: 0.38em;
 }
 
-/* Tactical Monitor Scanline Effect */
+/* ─────────────────────────────────────────────
+   COMPONENT UTILITIES
+───────────────────────────────────────────── */
+
+/* Glass card surface */
+.card-glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 24px 60px rgba(0, 0, 0, 0.28);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.card-glass:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-active);
+}
+
+/* Primary CTA button — professional aerospace style */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.5rem;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  border-radius: var(--radius-btn);
+  color: #67e8f9;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background: rgba(34, 211, 238, 0.18);
+  border-color: rgba(34, 211, 238, 0.55);
+  color: #a5f3fc;
+}
+
+/* Ghost button — clean, unobtrusive */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6875rem 1.5rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-btn);
+  color: rgba(148, 163, 184, 0.9);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--color-text-primary);
+}
+
+/* ─────────────────────────────────────────────
+   SECTION DIVIDERS
+───────────────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────────
+   SCANLINE EFFECT (VigilanceHUD)
+───────────────────────────────────────────── */
 .scanline {
   width: 100%;
-  height: 100px;
-  background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(6, 182, 212, 0.05) 50%, rgba(0, 0, 0, 0) 100%);
-  opacity: 0.15;
+  height: 120px;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(6, 182, 212, 0.02) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  opacity: 0.06;
   position: fixed;
-  top: -100px;
+  top: -120px;
   left: 0;
   z-index: 130;
-  animation: scanline 8s linear infinite;
+  animation: scanline 18s linear infinite;
   pointer-events: none;
 }
 
 @keyframes scanline {
-  0% {
-    transform: translateY(0);
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(120vh); }
+}
+
+/* ─────────────────────────────────────────────
+   AEROSPACE CURSOR PULSE ANIMATION
+───────────────────────────────────────────── */
+@keyframes cursor-scan-pulse {
+  0%,  100% { opacity: 0.55; }
+  50%       { opacity: 0.85; }
+}
+
+/* ─────────────────────────────────────────────
+   NAV — Premium aerospace, unified system
+   Reference: Anduril / Palantir / Shield AI
+───────────────────────────────────────────── */
+.nav-link {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: rgba(203, 213, 225, 0.72);
+  text-decoration: none;
+  padding: 0.3rem 0;
+  transition: color 0.18s ease;
+  line-height: 1;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: rgba(34, 211, 238, 0.55);
+  transition: width 0.22s ease;
+}
+
+.nav-link:hover {
+  color: rgba(226, 232, 240, 0.95);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
+}
+
+.nav-link.active {
+  color: rgba(226, 232, 240, 0.95);
+}
+
+/* ─────────────────────────────────────────────
+   SCROLL REVEAL BASE
+───────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─────────────────────────────────────────────
+   DAVINA FRAMEWORK CARD ACCENT BAR
+───────────────────────────────────────────── */
+.davina-card-active {
+  position: relative;
+}
+
+.davina-card-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--color-accent-cyan), var(--color-accent-blue));
+  border-radius: 2px 0 0 2px;
+}
+
+/* ─────────────────────────────────────────────
+   INVESTOR STRIP
+───────────────────────────────────────────── */
+.investor-strip {
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.08) 0%,
+    rgba(14, 165, 233, 0.06) 100%
+  );
+  border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+/* ─────────────────────────────────────────────
+   SELECTION
+───────────────────────────────────────────── */
+::selection {
+  background: rgba(34, 211, 238, 0.25);
+  color: #fff;
+}
+
+/* ═════════════════════════════════════════════
+   HERO SECTION — Central Vertical Axis System
+   All elements align on a single center axis.
+   Order: Logo → Headline → Description → CTAs
+   The 3D canvas (drone + Earth) sits behind.
+═════════════════════════════════════════════ */
+
+/* Hero container — fills viewport, no overflow */
+.hero-section {
+  position: relative;
+  width: 100%;
+  min-height: 100svh;       /* Allow expansion so buttons are never cut off */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: visible;        /* Prevent clipping */
+  pointer-events: none;
+}
+
+/* Inner content column — all items on one axis */
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 720px;
+  padding-left: clamp(1rem, 4vw, 2rem);
+  padding-right: clamp(1rem, 4vw, 2rem);
+  /* Sensible top padding: leaves space below Navbar for the Drone */
+  padding-top: clamp(80px, 12vh, 120px);
+  gap: 0; /* spacing handled per-element for precision */
+}
+
+/* ── Eyebrow label ── */
+.hero-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: clamp(1.25rem, 2.5vh, 1.75rem);
+}
+
+.hero-eyebrow-line {
+  height: 1px;
+  width: 1.75rem;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.hero-eyebrow-text {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.30);
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+}
+
+/* ── Logo wrapper — 25% larger than previous design ── */
+/* Previous: max-w-[320px] md:max-w-[480px] */
+/* New:      min 380px → max 580px on large screens  */
+.hero-logo-wrapper {
+  width: 100%;
+  margin-bottom: clamp(1rem, 2vh, 1.5rem);
+}
+
+/* The actual hero-logo-container set on the div inside DavinaLogo */
+.hero-logo-container {
+  width: clamp(300px, 42vw, 560px);
+}
+
+/* ── Headline — powerful, aerospace-grade (Anduril / SpaceX aesthetic) ── */
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.5vw, 3.2rem); /* Reduced size per user feedback */
+  font-weight: 600; /* Dropped from 700 for a more technical, premium feel */
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: #f1f5f9;
+  text-align: center;
+  text-wrap: balance;
+  margin: 0 0 clamp(0.875rem, 1.8vh, 1.25rem);
+  max-width: 900px; /* Widened to force 2 lines instead of 3 */
+}
+
+.hero-headline-accent {
+  color: var(--color-accent-cyan);
+}
+
+/* ── Description — highly readable, not competing with headline ── */
+.hero-description {
+  font-family: var(--font-display);
+  font-size: clamp(0.875rem, 1.5vw, 1rem);
+  font-weight: 300;
+  line-height: 1.72;
+  color: rgba(148, 163, 184, 0.80);
+  text-align: center;
+  max-width: 430px;
+  margin: 0 0 clamp(1.5rem, 3vh, 2rem);
+}
+
+/* ── CTA button row ── */
+.hero-ctas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ── Scroll cue — bottom center ── */
+.hero-scroll-cue {
+  position: absolute;
+  bottom: clamp(5vh, 8vh, 10vh);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ─────────────────────────────────────────────
+   RESPONSIVE — Mobile / Tablet / Desktop
+───────────────────────────────────────────── */
+
+/* Small phones (< 480px) */
+@media (max-width: 479px) {
+  .hero-content {
+    padding-top: clamp(72px, 10vh, 90px);
+    max-width: 100%;
   }
 
-  100% {
-    transform: translateY(120vh);
+  .hero-logo-container {
+    width: clamp(220px, 70vw, 320px);
+  }
+
+  .hero-headline {
+    font-size: clamp(1.5rem, 7.5vw, 2rem);
+    letter-spacing: -0.02em;
+  }
+
+  .hero-description {
+    font-size: 0.875rem;
+    max-width: 320px;
   }
 }
+
+/* Tablets (480px – 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .hero-content {
+    padding-top: clamp(80px, 11vh, 100px);
+  }
+
+  .hero-logo-container {
+    width: clamp(280px, 60vw, 400px);
+  }
+
+  .hero-headline {
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+  }
+}
+
+/* CTAs become row on sm+ */
+@media (min-width: 540px) {
+  .hero-ctas {
+    flex-direction: row;
+  }
+}
+
+/* Large tablets (768px – 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero-content {
+    padding-top: clamp(80px, 12vh, 110px);
+  }
+
+  .hero-logo-container {
+    width: clamp(340px, 44vw, 480px);
+  }
+
+  .hero-headline {
+    font-size: clamp(2rem, 3.8vw, 3rem);
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .hero-logo-container {
+    width: clamp(400px, 38vw, 560px);
+  }
+
+  .hero-headline {
+    font-size: clamp(2.25rem, 4vw, 3.75rem);
+  }
+}
+
+/* Ultra-wide (1440px+) */
+@media (min-width: 1440px) {
+  .hero-logo-container {
+    width: clamp(480px, 34vw, 560px);
+  }
+
+  .hero-headline {
+    font-size: clamp(2.75rem, 3.5vw, 4rem);
+  }
+}
+

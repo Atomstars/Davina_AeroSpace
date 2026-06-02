@@ -27,7 +27,7 @@ export default function DavinaLogo({ variant = 'nav' }: DavinaLogoProps) {
     };
 
     return (
-        <div className={`relative select-none z-50 ${isHero ? 'w-[320px] md:w-[480px] block mx-auto' : 'w-[140px] block'}`}>
+        <div className={`relative select-none z-50 ${isHero ? 'hero-logo-container block mx-auto' : 'w-[140px] block'}`}>
             <motion.img
                 src={logoImage}
                 alt="DAVINA Aerospace"
@@ -36,8 +36,8 @@ export default function DavinaLogo({ variant = 'nav' }: DavinaLogoProps) {
                 animate="visible"
                 className={`w-full h-auto object-contain ${
                     isHero
-                        ? 'drop-shadow-[0_0_35px_rgba(34,211,238,0.65)] brightness-110' 
-                        : 'drop-shadow-[0_0_12px_rgba(34,211,238,0.4)]' 
+                        ? 'drop-shadow-[0_0_48px_rgba(34,211,238,0.75)] brightness-[1.18]'
+                        : 'drop-shadow-[0_0_12px_rgba(34,211,238,0.4)]'
                 }`}
                 draggable={false}
             />
