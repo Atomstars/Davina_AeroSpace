@@ -1,4 +1,4 @@
-import { useRef, useMemo, useState } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -20,8 +20,6 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
     const cloudsRef = useRef<THREE.Mesh>(null!);
     const atmosphereRef = useRef<THREE.Mesh>(null!);
     const ringsRef = useRef<THREE.Group>(null!);
-    const satelliteOrbitRefs = useRef<THREE.Group[]>([]);
-    const orbitLineRefs = useRef<THREE.Line[]>([]);
     const globeGroupRef = useRef<THREE.Group>(null!);
     const navMarkerRef = useRef<THREE.Mesh>(null!);
     const navMarkerHaloRef = useRef<THREE.Mesh>(null!);
@@ -43,12 +41,7 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
     ]);
 
     // 2. Clone safely for the linter
-    const { dayMap, nightMap, cloudsMap, bumpMap } = useMemo(() => {
-        const day = rawDayMap.clone();
-        day.colorSpace = THREE.SRGBColorSpace;
-        day.anisotropy = 16;
-        day.needsUpdate = true;
-
+    const { nightMap, cloudsMap, bumpMap } = useMemo(() => {
         const night = rawNightMap.clone();
         night.colorSpace = THREE.SRGBColorSpace;
         night.anisotropy = 16;
@@ -62,7 +55,7 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
         bump.anisotropy = 16;
         bump.needsUpdate = true;
 
-        return { dayMap: day, nightMap: night, cloudsMap: clouds, bumpMap: bump };
+        return { nightMap: night, cloudsMap: clouds, bumpMap: bump };
     }, [rawDayMap, rawNightMap, rawCloudsMap, rawBumpMap]);
 
     const latLonToVector3 = (lat: number, lon: number, radius: number) => {
