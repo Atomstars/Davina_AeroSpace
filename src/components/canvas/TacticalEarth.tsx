@@ -55,6 +55,11 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
         bump.anisotropy = 16;
         bump.needsUpdate = true;
 
+        // Apply SRGB to day map for accurate color reproduction
+        rawDayMap.colorSpace = THREE.SRGBColorSpace;
+        rawDayMap.anisotropy = 16;
+        rawDayMap.needsUpdate = true;
+
         return { nightMap: night, cloudsMap: clouds, bumpMap: bump };
     }, [rawDayMap, rawNightMap, rawCloudsMap, rawBumpMap]);
 
@@ -177,25 +182,24 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
             }}
         >
 
-            {/* REALISTIC EARTH BASE — radius 9.0, brighter for planetary presence */}
+            {/* REALISTIC EARTH BASE — radius 9.0, increased day-side illumination */}
             <mesh ref={earthRef}>
                 <sphereGeometry args={[9.0, 64, 64]} />
                 <meshStandardMaterial
-                    color="#020813"
+                    color="#030f1e"
+                    map={rawDayMap}
                     emissiveMap={nightMap}
-                    emissive={new THREE.Color("#0ea5e9")}
-                    emissiveIntensity={4.0}
+                    emissive={new THREE.Color("#0a6090")}
+                    emissiveIntensity={1.8}
                     bumpMap={bumpMap}
-                    bumpScale={0.32}
-                    roughness={0.72}
-                    metalness={0.06}
+                    bumpScale={0.45}
+                    roughness={0.65}
+                    metalness={0.04}
                 />
             </mesh>
 
             {/*
-             * GEODESIC WIREFRAME OVERLAY
-             * Subtle triangulated mesh — aerospace tactical overlay.
-             * Slightly more visible to show Earth is instrumented.
+             * GEODESIC WIREFRAME OVERLAY — reduced opacity, secondary detail only
              */}
             <mesh>
                 <icosahedronGeometry args={[9.07, 3]} />
@@ -203,73 +207,91 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
                     color="#22d3ee"
                     wireframe
                     transparent
-                    opacity={0.040}
+                    opacity={0.022}
                     toneMapped={false}
                     depthWrite={false}
                 />
             </mesh>
 
-            {/* CLOUDS LAYER — slightly more visible */}
+            {/* CLOUDS LAYER — more visible, organic movement */}
             <mesh ref={cloudsRef} rotation={[0.2, 0, 0]}>
-                <sphereGeometry args={[9.06, 64, 64]} />
+                <sphereGeometry args={[9.08, 64, 64]} />
                 <meshStandardMaterial
                     map={cloudsMap}
                     transparent={true}
-                    opacity={0.32}
+                    opacity={0.52}
                     blending={THREE.AdditiveBlending}
                     depthWrite={false}
                 />
             </mesh>
 
-            {/* ATMOSPHERIC HALO — stronger glow for planetary horizon impact */}
+            {/* ATMOSPHERIC HALO — primary glow, strong blue horizon */}
             <mesh ref={atmosphereRef}>
-                <sphereGeometry args={[9.32, 64, 64]} />
+                <sphereGeometry args={[9.38, 64, 64]} />
                 <meshBasicMaterial
-                    color="#0ea5e9"
+                    color="#1a90d0"
                     transparent
-                    opacity={0.15}
+                    opacity={0.22}
                     side={THREE.BackSide}
                     blending={THREE.AdditiveBlending}
                 />
             </mesh>
-            {/* Outer atmospheric scatter — enhanced */}
+            {/* Secondary atmosphere — broader scatter */}
             <mesh>
-                <sphereGeometry args={[9.55, 48, 48]} />
+                <sphereGeometry args={[9.68, 48, 48]} />
                 <meshBasicMaterial
-                    color="#0284c7"
+                    color="#0a5a90"
                     transparent
-                    opacity={0.06}
+                    opacity={0.10}
+                    side={THREE.BackSide}
+                    blending={THREE.AdditiveBlending}
+                />
+            </mesh>
+            {/* Outer limb glow — separates Earth from deep space */}
+            <mesh>
+                <sphereGeometry args={[9.95, 48, 48]} />
+                <meshBasicMaterial
+                    color="#042844"
+                    transparent
+                    opacity={0.055}
                     side={THREE.BackSide}
                     blending={THREE.AdditiveBlending}
                 />
             </mesh>
 
-            {/* ORBITAL RINGS — 2 proper orbits with tiny satellites */}
+            {/* ORBITAL PATHS — max 3, sit behind logo/headline/content.
+                Interact only with Earth and Drone. */}
             <group ref={ringsRef} position={[0, 0, 0]} rotation={[0.2, 0, 0]}>
-                {/* Orbit 1 */}
+                {/* Orbit 1 — primary ISR orbit, inner */}
                 <group rotation={[Math.PI / 2.1, 0, 0]}>
                     <mesh>
-                        <torusGeometry args={[10.5, 0.015, 16, 100]} />
-                        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.4} />
+                        <torusGeometry args={[10.5, 0.012, 16, 100]} />
+                        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.28} />
                     </mesh>
-                    {/* Tiny glowing satellite on the orbit */}
                     <mesh position={[10.5, 0, 0]}>
-                        <sphereGeometry args={[0.08, 16, 16]} />
+                        <sphereGeometry args={[0.06, 16, 16]} />
                         <meshBasicMaterial color="#ffffff" />
-                        <pointLight color="#0ea5e9" intensity={1} distance={2} />
+                        <pointLight color="#0ea5e9" intensity={0.7} distance={1.5} />
                     </mesh>
                 </group>
 
-                {/* Orbit 2 */}
+                {/* Orbit 2 — higher inclined orbit */}
                 <group rotation={[Math.PI / 1.8, 0.4, 0]}>
                     <mesh>
-                        <torusGeometry args={[11.8, 0.012, 16, 100]} />
-                        <meshBasicMaterial color="#38bdf8" transparent opacity={0.3} />
+                        <torusGeometry args={[11.8, 0.010, 16, 100]} />
+                        <meshBasicMaterial color="#38bdf8" transparent opacity={0.18} />
                     </mesh>
-                    {/* Tiny glowing satellite */}
                     <mesh position={[-11.8, 0, 0]}>
-                        <sphereGeometry args={[0.06, 16, 16]} />
-                        <meshBasicMaterial color="#ffffff" />
+                        <sphereGeometry args={[0.05, 16, 16]} />
+                        <meshBasicMaterial color="#e0f0ff" />
+                    </mesh>
+                </group>
+
+                {/* Orbit 3 — distant high orbit, faintest */}
+                <group rotation={[Math.PI / 2.6, 1.1, 0.3]}>
+                    <mesh>
+                        <torusGeometry args={[13.2, 0.008, 16, 100]} />
+                        <meshBasicMaterial color="#0284c7" transparent opacity={0.11} />
                     </mesh>
                 </group>
             </group>

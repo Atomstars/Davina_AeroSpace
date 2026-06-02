@@ -396,9 +396,13 @@ body {
   max-width: 720px;
   padding-left: clamp(1rem, 4vw, 2rem);
   padding-right: clamp(1rem, 4vw, 2rem);
-  /* Sensible top padding: leaves space below Navbar for the Drone */
-  padding-top: clamp(80px, 12vh, 120px);
-  gap: 0; /* spacing handled per-element for precision */
+  /*
+   * Top padding: drone sits in the upper ~30% of the viewport (3D canvas).
+   * Content starts below that drone zone. Navbar = 72px + drone zone ~18vh.
+   * This creates the visual hierarchy: Drone → Logo → Headline → ...
+   */
+  padding-top: clamp(130px, 22vh, 190px);
+  gap: 0;
 }
 
 /* ── Eyebrow label ── */
@@ -438,34 +442,36 @@ body {
   width: clamp(300px, 42vw, 560px);
 }
 
-/* ── Headline — powerful, aerospace-grade (Anduril / SpaceX aesthetic) ── */
+/* ── Headline — precision aerospace engineering aesthetic ── */
 .hero-headline {
   font-family: var(--font-display);
-  font-size: clamp(1.5rem, 3.5vw, 3.2rem); /* Reduced size per user feedback */
-  font-weight: 600; /* Dropped from 700 for a more technical, premium feel */
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  color: #f1f5f9;
+  font-size: clamp(1.6rem, 3.2vw, 3.0rem);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.025em;   /* tighter — engineered, not advertised */
+  color: #e8eef4;
   text-align: center;
   text-wrap: balance;
   margin: 0 0 clamp(0.875rem, 1.8vh, 1.25rem);
-  max-width: 900px; /* Widened to force 2 lines instead of 3 */
+  max-width: 780px;
+  text-transform: uppercase;  /* aerospace-grade, like technical documentation */
 }
 
 .hero-headline-accent {
   color: var(--color-accent-cyan);
 }
 
-/* ── Description — highly readable, not competing with headline ── */
+/* ── Description — technical, readable, subordinate to headline ── */
 .hero-description {
   font-family: var(--font-display);
-  font-size: clamp(0.875rem, 1.5vw, 1rem);
-  font-weight: 300;
-  line-height: 1.72;
-  color: rgba(148, 163, 184, 0.80);
+  font-size: clamp(0.82rem, 1.4vw, 0.95rem);
+  font-weight: 400;
+  line-height: 1.78;
+  color: rgba(148, 163, 184, 0.75);
   text-align: center;
-  max-width: 430px;
+  max-width: 400px;
   margin: 0 0 clamp(1.5rem, 3vh, 2rem);
+  letter-spacing: 0.005em;
 }
 
 /* ── CTA button row ── */
@@ -491,7 +497,7 @@ body {
 /* Small phones (< 480px) */
 @media (max-width: 479px) {
   .hero-content {
-    padding-top: clamp(72px, 10vh, 90px);
+    padding-top: clamp(110px, 18vh, 150px);
     max-width: 100%;
   }
 
@@ -500,12 +506,12 @@ body {
   }
 
   .hero-headline {
-    font-size: clamp(1.5rem, 7.5vw, 2rem);
+    font-size: clamp(1.4rem, 7vw, 1.9rem);
     letter-spacing: -0.02em;
   }
 
   .hero-description {
-    font-size: 0.875rem;
+    font-size: 0.82rem;
     max-width: 320px;
   }
 }
@@ -513,7 +519,7 @@ body {
 /* Tablets (480px – 767px) */
 @media (min-width: 480px) and (max-width: 767px) {
   .hero-content {
-    padding-top: clamp(80px, 11vh, 100px);
+    padding-top: clamp(120px, 20vh, 160px);
   }
 
   .hero-logo-container {
@@ -521,7 +527,7 @@ body {
   }
 
   .hero-headline {
-    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-size: clamp(1.7rem, 4.5vw, 2.4rem);
   }
 }
 
@@ -535,7 +541,7 @@ body {
 /* Large tablets (768px – 1023px) */
 @media (min-width: 768px) and (max-width: 1023px) {
   .hero-content {
-    padding-top: clamp(80px, 12vh, 110px);
+    padding-top: clamp(130px, 21vh, 170px);
   }
 
   .hero-logo-container {
@@ -543,7 +549,7 @@ body {
   }
 
   .hero-headline {
-    font-size: clamp(2rem, 3.8vw, 3rem);
+    font-size: clamp(2rem, 3.6vw, 2.8rem);
   }
 }
 
@@ -554,7 +560,7 @@ body {
   }
 
   .hero-headline {
-    font-size: clamp(2.25rem, 4vw, 3.75rem);
+    font-size: clamp(2.2rem, 3.8vw, 3.4rem);
   }
 }
 
@@ -565,7 +571,7 @@ body {
   }
 
   .hero-headline {
-    font-size: clamp(2.75rem, 3.5vw, 4rem);
+    font-size: clamp(2.6rem, 3.2vw, 3.8rem);
   }
 }
 

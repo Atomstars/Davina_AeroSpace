@@ -88,17 +88,17 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
      * Stealthy, high metalness, low roughness = crisp reflections showing lighting detail.
      */
     const wingMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#0f1724',
-        metalness: 0.98,
-        roughness: 0.12,
-        envMapIntensity: 1.4,
+        color: '#141f2e',
+        metalness: 0.96,
+        roughness: 0.10,
+        envMapIntensity: 2.0,
     }), []);
 
     const wingEdgeMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-        color: '#b8ccd8',
-        metalness: 0.98,
-        roughness: 0.08,
-        envMapIntensity: 1.8,
+        color: '#ccdde8',
+        metalness: 0.99,
+        roughness: 0.05,
+        envMapIntensity: 2.4,
     }), []);
 
     const geometries = useMemo(() => ({
@@ -143,49 +143,70 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
 
         if (groupRef.current) {
             /*
-             * Position: visually the highest element on screen, well above Earth horizon
-             * and DAVINA logo. Flies below the Navigation bar.
+             * DRONE ABOVE LOGO: position pushed higher (y=9.6) so it sits
+             * visually above the DAVINA hero logo in screen space.
+             * Layout order: Drone → Logo → Headline → Description → CTAs → Earth
              */
-            const altHold      = Math.sin(t * 0.30) * 0.038 + Math.sin(t * 0.16) * 0.016;
-            const lateralDrift = Math.sin(t * 0.19) * 0.040;
-            const depthShift   = Math.sin(t * 0.24) * 0.035;
+            // Multi-frequency hover: primary slow lift + secondary micro-correction
+            const altHold      = Math.sin(t * 0.28) * 0.055 + Math.sin(t * 0.71) * 0.018 + Math.cos(t * 1.35) * 0.008;
+            // Subtle lateral patrol — small, autonomous, intentional
+            const lateralDrift = Math.sin(t * 0.17) * 0.032 + Math.cos(t * 0.43) * 0.012;
+            const depthShift   = Math.sin(t * 0.22) * 0.028;
 
             groupRef.current.position.x = 0.0 + lateralDrift;
-            groupRef.current.position.y = 7.0 + altHold;
+            groupRef.current.position.y = 9.6 + altHold;   // ← raised above logo
             groupRef.current.position.z = 2.5 + depthShift;
 
             /*
-             * Cursor-responsive + continuous autonomous correction.
-             * Simulates gyroscopic stabilization against high-altitude wind.
+             * GYROSCOPIC STABILIZATION + AUTONOMOUS CORRECTIONS:
+             * Multiple overlapping sin/cos waves simulate IMU-corrected flight.
+             * Pitch, roll, yaw all independently oscillate — organic, not mechanical.
              */
-            const cursorRoll  = ptr.x * 0.032;
-            const cursorPitch = ptr.y * 0.022;
+            const cursorRoll  = ptr.x * 0.028;
+            const cursorPitch = -ptr.y * 0.018;
 
-            const autonomousPitch = Math.sin(t * 1.8) * 0.008 + Math.cos(t * 0.7) * 0.005;
-            const autonomousRoll  = Math.cos(t * 1.4) * 0.010 + Math.sin(t * 0.9) * 0.006;
+            // Pitch: forward/back corrections — slow primary + fast micro
+            const autonomousPitch =
+                Math.sin(t * 0.55) * 0.022 +
+                Math.cos(t * 1.80) * 0.009 +
+                Math.sin(t * 3.10) * 0.004;
 
-            groupRef.current.rotation.x = -0.05 + cursorPitch + autonomousPitch;
-            groupRef.current.rotation.y = -0.03 + cursorRoll;
-            groupRef.current.rotation.z =         cursorRoll * 0.38 + autonomousRoll;
+            // Roll: wing-level corrections — independent frequency from pitch
+            const autonomousRoll =
+                Math.cos(t * 0.42) * 0.018 +
+                Math.sin(t * 1.60) * 0.010 +
+                Math.cos(t * 2.90) * 0.005;
+
+            // Yaw: slow heading corrections — barely perceptible
+            const autonomousYaw =
+                Math.sin(t * 0.28) * 0.012 +
+                Math.cos(t * 0.95) * 0.006;
+
+            groupRef.current.rotation.x = -0.04 + cursorPitch + autonomousPitch;
+            groupRef.current.rotation.y = autonomousYaw + cursorRoll * 0.3;
+            groupRef.current.rotation.z = cursorRoll * 0.45 + autonomousRoll;
         }
 
-        // Aeroelastic micro-flex — very subtle structural response
-        const flex = Math.sin(t * 1.5) * 0.012;
-        if (leftWingRef.current)  leftWingRef.current.rotation.z  =  flex;
-        if (rightWingRef.current) rightWingRef.current.rotation.z = -flex;
-        if (leftTailRef.current)  leftTailRef.current.rotation.z  = -flex * 0.5;
-        if (rightTailRef.current) rightTailRef.current.rotation.z =  flex * 0.5;
+        // WING ARTICULATION — aeroelastic response, each surface independent
+        const wingFlex   = Math.sin(t * 1.4) * 0.016 + Math.cos(t * 2.6) * 0.006;
+        const tailTrim   = Math.sin(t * 0.9) * 0.010 + Math.sin(t * 2.1) * 0.004;
+        if (leftWingRef.current)  leftWingRef.current.rotation.z  =  wingFlex;
+        if (rightWingRef.current) rightWingRef.current.rotation.z = -wingFlex;
+        if (leftTailRef.current)  leftTailRef.current.rotation.z  = -tailTrim;
+        if (rightTailRef.current) rightTailRef.current.rotation.z =  tailTrim;
 
-        if (gyroARef.current) gyroARef.current.rotation.z += delta * 2.4;
-        if (gyroBRef.current) gyroBRef.current.rotation.z -= delta * 3.0;
+        // Gyroscope rings — counter-rotating for visual gyroscopic effect
+        if (gyroARef.current) gyroARef.current.rotation.z += delta * 2.8;
+        if (gyroBRef.current) gyroBRef.current.rotation.z -= delta * 3.5;
     });
 
     return (
         /*
-         * Scale 1.75: slightly larger to account for depth shift, compositing high up.
-         * Centered (x=0) for vertical axis alignment.
+         * Scale 1.40 (20% reduction from 1.75).
+         * Secondary element — present but not dominant.
+         * Centered on vertical axis.
          */
-        <group ref={groupRef} position={[0, 7.0, 2.5]} rotation={[-0.05, -0.03, 0]} scale={1.75}>
+        <group ref={groupRef} position={[0, 9.6, 2.5]} rotation={[-0.04, 0, 0]} scale={1.40}>
 
             {/* Main wing surfaces — dark anodised aerospace alloy */}
             <mesh ref={leftWingRef} geometry={geometries.leftWing} material={wingMaterial} />
@@ -264,10 +285,15 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
                 <meshBasicMaterial color="#38bdf8" transparent opacity={0.30} toneMapped={false} />
             </mesh>
 
-            {/* Lighting — key light from upper-left + fill from below */}
-            <pointLight color="#a8d8ff" intensity={2.2} distance={6.0} position={[-2.0, 2.0, 2.0]} />
-            <pointLight color="#ffffff" intensity={0.8} distance={4.0} position={[0, 1.2, 2.0]} />
-            <pointLight color="#22d3ee" intensity={0.6} distance={3.5} position={[0, -0.5, 1.2]} />
+            {/* Lighting — three-point premium aerospace lighting rig */}
+            {/* Key: upper-left cool white — primary surface illumination */}
+            <pointLight color="#b8d8f8" intensity={3.2} distance={8.0} position={[-2.4, 2.8, 2.5]} />
+            {/* Fill: front-center warm white — removes dead shadows */}
+            <pointLight color="#ffffff" intensity={1.2} distance={5.0} position={[0, 1.0, 3.0]} />
+            {/* Rim: back-right — separation from deep space bg */}
+            <pointLight color="#4090b8" intensity={1.8} distance={6.0} position={[3.0, 0.5, -1.0]} />
+            {/* Cyan underlight — nav light environment bounce */}
+            <pointLight color="#22d3ee" intensity={0.9} distance={3.0} position={[0, -0.8, 1.5]} />
         </group>
     );
 }

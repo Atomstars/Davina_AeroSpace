@@ -299,16 +299,15 @@ export default function App() {
 
                         {/* ── HEADLINE ── */}
                         <h1 className="hero-headline">
-                            Building the Autonomous{' '}
-                            <span className="hero-headline-accent">Defence Platforms</span>
-                            {' '}of Tomorrow
+                            Engineering Autonomous{' '}
+                            <span className="hero-headline-accent">Aerospace Systems</span>
                         </h1>
 
                         {/* ── DESCRIPTION ── */}
                         <p className="hero-description">
-                            Davina Aerospace engineers intelligent unmanned systems,
-                            advanced avionics, and next-generation aerial platforms —
-                            designed for national security, allied operations, and the future of flight.
+                            Intelligent unmanned platforms, advanced avionics, and
+                            next-generation aerial systems — engineered for national
+                            security and strategic operations.
                         </p>
 
                         {/* ── CTA BUTTONS ── */}
