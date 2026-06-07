@@ -2,7 +2,6 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import DataStreams from './DataStreams';
 
 /* ───────────────────────────────────────────────────────────
    EARTH SURFACE SHADER — day/night terminator
@@ -362,9 +361,6 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
                     blending={THREE.AdditiveBlending}
                 />
             </mesh>
-
-            {/* DATA STREAMS — GPU-animated particle atmosphere around the globe */}
-            <DataStreams />
 
             {/* ORBITAL PATHS — max 3, sit behind logo/headline/content.
                 Interact only with Earth and Drone. */}
