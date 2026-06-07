@@ -1,10 +1,12 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
+import { useProgress } from '@react-three/drei';
 import Scene from './components/Scene';
 import Navbar from './components/Navbar';
 import AerospaceCursor from './components/AerospaceCursor';
 import VigilanceHUD from './components/VigilanceHUD';
 import DavinaLogo from './components/DavinaLogo';
+import { useSmoothScroll } from './lib/scroll';
 import {
     Cpu, Crosshair, Rocket, Globe, ShieldCheck, Navigation,
     Mail, MapPin, ArrowUpRight, ChevronDown, Send,
@@ -81,9 +83,32 @@ export default function App() {
     const [activeAcronym, setActiveAcronym] = useState('Defence');
     const [formState, setFormState] = useState({ name: '', org: '', message: '', sent: false });
 
+    // Premium smooth scrolling — drives the cinematic 3D camera choreography.
+    useSmoothScroll();
+
+    // Preloader bound to real asset loading (Earth textures, etc.).
+    const { active, progress } = useProgress();
+    const [minTimeDone, setMinTimeDone] = useState(false);
+
+    // Top-of-page scroll progress indicator.
+    const { scrollYProgress } = useScroll();
+    const scrollScale = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.4 });
+
+    // Minimum on-screen time so the preloader never just flashes.
     useEffect(() => {
-        const timer = setTimeout(() => setIsBooting(false), 1600);
-        return () => clearTimeout(timer);
+        const t = setTimeout(() => setMinTimeDone(true), 1400);
+        return () => clearTimeout(t);
+    }, []);
+
+    // Dismiss once assets are loaded AND the minimum time has elapsed.
+    useEffect(() => {
+        if (minTimeDone && progress >= 100 && !active) setIsBooting(false);
+    }, [minTimeDone, progress, active]);
+
+    // Safety fallback — never trap the user behind the preloader.
+    useEffect(() => {
+        const t = setTimeout(() => setIsBooting(false), 7000);
+        return () => clearTimeout(t);
     }, []);
 
     // ── DATA ──────────────────────────────────────────────
@@ -244,6 +269,12 @@ export default function App() {
             {/* Only one navigation bar — nothing above it */}
             <Navbar />
 
+            {/* Scroll progress indicator — thin cyan line tracking page progress */}
+            <motion.div
+                className="fixed top-0 left-0 right-0 h-[2px] z-[150] origin-left bg-gradient-to-r from-cyan-500 via-cyan-300 to-sky-400 pointer-events-none"
+                style={{ scaleX: scrollScale }}
+            />
+
             {/* ── BOOT SCREEN ── */}
             <AnimatePresence>
                 {isBooting && (
@@ -255,11 +286,13 @@ export default function App() {
                         <div className="label-mono mb-5">DAVINA PLATFORM INITIALIZING</div>
                         <div className="w-56 h-px bg-white/[0.06] relative overflow-hidden rounded">
                             <motion.div
-                                initial={{ left: '-100%' }}
-                                animate={{ left: '100%' }}
-                                transition={{ duration: 1.0, ease: 'easeInOut' }}
-                                className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/60 to-transparent"
+                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500/40 via-cyan-400 to-cyan-500/40"
+                                animate={{ width: `${Math.max(6, progress)}%` }}
+                                transition={{ ease: 'easeOut', duration: 0.3 }}
                             />
+                        </div>
+                        <div className="mt-4 font-mono text-[0.65rem] tracking-[0.3em] text-cyan-300/70 tabular-nums">
+                            {String(Math.round(progress)).padStart(3, '0')}%
                         </div>
                     </motion.div>
                 )}

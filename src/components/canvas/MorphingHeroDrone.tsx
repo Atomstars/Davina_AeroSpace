@@ -1,6 +1,8 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Trail } from '@react-three/drei';
 import * as THREE from 'three';
+import { applyDroneFlight } from '../../lib/droneFlight';
 
 function makeShape(points: Array<[number, number]>) {
     const shape = new THREE.Shape();
@@ -69,7 +71,7 @@ function SpineSegment({ y, scale = 1 }: { y: number; scale?: number }) {
     return (
         <mesh position={[0, y, 0.24]} scale={[scale, 1, 1]}>
             <boxGeometry args={[0.50, 0.30, 0.17]} />
-            <meshStandardMaterial color="#c8d8e4" metalness={0.82} roughness={0.14} />
+            <meshStandardMaterial color="#5f7282" metalness={0.85} roughness={0.22} />
         </mesh>
     );
 }
@@ -82,6 +84,9 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
     const rightTailRef = useRef<THREE.Mesh>(null!);
     const gyroARef = useRef<THREE.Mesh>(null!);
     const gyroBRef = useRef<THREE.Mesh>(null!);
+    const scanRef = useRef<THREE.Mesh>(null!);
+    const scanMatRef = useRef<THREE.MeshBasicMaterial>(null!);
+    const scanPhase = useRef(0);
 
     /**
      * Wing surface material — anodised aerospace alloy.
@@ -141,51 +146,8 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
         const t = state.clock.elapsedTime;
         const ptr = pointer ?? new THREE.Vector2(0, 0);
 
-        if (groupRef.current) {
-            /*
-             * DRONE ABOVE LOGO: position pushed higher (y=9.6) so it sits
-             * visually above the DAVINA hero logo in screen space.
-             * Layout order: Drone → Logo → Headline → Description → CTAs → Earth
-             */
-            // Multi-frequency hover: primary slow lift + secondary micro-correction
-            const altHold      = Math.sin(t * 0.28) * 0.055 + Math.sin(t * 0.71) * 0.018 + Math.cos(t * 1.35) * 0.008;
-            // Subtle lateral patrol — small, autonomous, intentional
-            const lateralDrift = Math.sin(t * 0.17) * 0.032 + Math.cos(t * 0.43) * 0.012;
-            const depthShift   = Math.sin(t * 0.22) * 0.028;
-
-            groupRef.current.position.x = 0.0 + lateralDrift;
-            groupRef.current.position.y = 9.6 + altHold;   // ← raised above logo
-            groupRef.current.position.z = 2.5 + depthShift;
-
-            /*
-             * GYROSCOPIC STABILIZATION + AUTONOMOUS CORRECTIONS:
-             * Multiple overlapping sin/cos waves simulate IMU-corrected flight.
-             * Pitch, roll, yaw all independently oscillate — organic, not mechanical.
-             */
-            const cursorRoll  = ptr.x * 0.028;
-            const cursorPitch = -ptr.y * 0.018;
-
-            // Pitch: forward/back corrections — slow primary + fast micro
-            const autonomousPitch =
-                Math.sin(t * 0.55) * 0.022 +
-                Math.cos(t * 1.80) * 0.009 +
-                Math.sin(t * 3.10) * 0.004;
-
-            // Roll: wing-level corrections — independent frequency from pitch
-            const autonomousRoll =
-                Math.cos(t * 0.42) * 0.018 +
-                Math.sin(t * 1.60) * 0.010 +
-                Math.cos(t * 2.90) * 0.005;
-
-            // Yaw: slow heading corrections — barely perceptible
-            const autonomousYaw =
-                Math.sin(t * 0.28) * 0.012 +
-                Math.cos(t * 0.95) * 0.006;
-
-            groupRef.current.rotation.x = -0.04 + cursorPitch + autonomousPitch;
-            groupRef.current.rotation.y = autonomousYaw + cursorRoll * 0.3;
-            groupRef.current.rotation.z = cursorRoll * 0.45 + autonomousRoll;
-        }
+        // Shared flight model (hover + gyro + cursor parallax + scroll exit).
+        if (groupRef.current) applyDroneFlight(groupRef.current, t, ptr);
 
         // WING ARTICULATION — aeroelastic response, each surface independent
         const wingFlex   = Math.sin(t * 1.4) * 0.016 + Math.cos(t * 2.6) * 0.006;
@@ -198,6 +160,15 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
         // Gyroscope rings — counter-rotating for visual gyroscopic effect
         if (gyroARef.current) gyroARef.current.rotation.z += delta * 2.8;
         if (gyroBRef.current) gyroBRef.current.rotation.z -= delta * 3.5;
+
+        // Holographic sensor scan ring — expands then fades, like a radar sweep
+        scanPhase.current = (scanPhase.current + delta * 0.55) % 1;
+        if (scanRef.current && scanMatRef.current) {
+            const sp = scanPhase.current;
+            const scale = 0.4 + sp * 3.2;
+            scanRef.current.scale.set(scale, scale, scale);
+            scanMatRef.current.opacity = (1 - sp) * 0.5;
+        }
     });
 
     return (
@@ -230,6 +201,26 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
             <ExposedRotor x={-1.5} />
             <ExposedRotor x={1.5} />
 
+            {/* Engine contrails — cyan ribbons that stream when the drone moves */}
+            <Trail width={1.1} length={5} color={'#22d3ee'} attenuation={(t) => t * t} decay={1.2}>
+                <mesh position={[-1.5, 0.0, -0.2]}>
+                    <sphereGeometry args={[0.04, 8, 8]} />
+                    <meshBasicMaterial color="#22d3ee" toneMapped={false} />
+                </mesh>
+            </Trail>
+            <Trail width={1.1} length={5} color={'#38bdf8'} attenuation={(t) => t * t} decay={1.2}>
+                <mesh position={[1.5, 0.0, -0.2]}>
+                    <sphereGeometry args={[0.04, 8, 8]} />
+                    <meshBasicMaterial color="#38bdf8" toneMapped={false} />
+                </mesh>
+            </Trail>
+
+            {/* Holographic sensor scan ring — expanding radar sweep beneath drone */}
+            <mesh ref={scanRef} position={[0, -1.1, 0.2]} rotation={[Math.PI / 2, 0, 0]}>
+                <torusGeometry args={[1.0, 0.018, 12, 64]} />
+                <meshBasicMaterial ref={scanMatRef} color="#22d3ee" transparent opacity={0.4} toneMapped={false} depthWrite={false} />
+            </mesh>
+
             {/* Central fuselage */}
             <group>
                 <SpineSegment y={0.38} scale={0.86} />
@@ -239,7 +230,7 @@ export default function MorphingHeroDrone({ pointer }: { pointer?: THREE.Vector2
                 {/* Nose sensor dome */}
                 <mesh position={[0, 0.70, 0.25]} rotation={[0, 0, Math.PI / 4]}>
                     <boxGeometry args={[0.30, 0.30, 0.16]} />
-                    <meshStandardMaterial color="#e8f2fa" metalness={0.80} roughness={0.12} />
+                    <meshStandardMaterial color="#8ea2b4" metalness={0.82} roughness={0.2} />
                 </mesh>
 
                 {/* Ventral EO/IR sensor pod */}

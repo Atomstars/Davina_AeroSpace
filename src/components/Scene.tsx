@@ -1,11 +1,16 @@
 import { useMemo, useState, useRef, Suspense, useEffect, type PointerEvent } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera } from '@react-three/drei';
-import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing';
+import { PerspectiveCamera, Environment, Lightformer } from '@react-three/drei';
+import {
+    EffectComposer, Bloom, Noise, Vignette,
+    ChromaticAberration,
+} from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 
 import TacticalEarth from './canvas/TacticalEarth';
-import MorphingHeroDrone from './canvas/MorphingHeroDrone';
+import HeroDrone from './canvas/HeroDrone';
+import { scrollState } from '../lib/scroll';
 
 /*
  * GLOBE POSITION MATH — radius 9.0, horizon fill target ~45%
@@ -14,27 +19,61 @@ import MorphingHeroDrone from './canvas/MorphingHeroDrone';
 const GLOBE_Y = -6.0;
 
 
+const smootherstep = (e0: number, e1: number, x: number) => {
+    const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+    return t * t * t * (t * (t * 6 - 15) + 10);
+};
+
 function CinematicCamera({ routeActive }: { routeActive: boolean }) {
     const lookTarget = useRef(new THREE.Vector3(0, 1.5, 0));
+    const posCurrent = useRef(new THREE.Vector3(0, 0, 24));
+    const rollCurrent = useRef(0);
 
     useFrame((state, delta) => {
+        const k = Math.min(1, delta * 3.4); // frame-rate-independent lerp factor
+
         /*
-         * Camera at z=24 (pulled back slightly to frame drone above logo).
-         * FOV 52° — tighter framing, less distortion.
-         * Looking at y=1.5: centres frame between drone (top) and Earth (bottom).
-         * This ensures: drone visible at top, logo/headline middle, Earth at base.
+         * SCROLL-DRIVEN CINEMATIC DIVE
+         * ────────────────────────────
+         * p = 0  → hero framing: drone top, logo middle, Earth at base (z=24).
+         * p = 1  → camera has descended toward the planet and pushed in, the
+         *          Earth's limb fills the lower frame (the "approach" shot).
+         * Active-Theory-style: a single continuous, eased camera move tied to
+         * the user's scroll position rather than fixed cuts.
          */
-        const normalPos  = new THREE.Vector3(0, 0, 24);
-        const normalLook = new THREE.Vector3(0, 1.5, 0);
-        const focusPos   = new THREE.Vector3(1.8, -1.1, 15);
-        const focusLook  = new THREE.Vector3(0.6, -0.8, 0);
+        const p = smootherstep(0, 1, scrollState.heroProgress);
+
+        // Pointer parallax — subtle, so the frame feels alive even at rest.
+        const px = state.pointer.x;
+        const py = state.pointer.y;
+
+        const normalPos = new THREE.Vector3(
+            px * 0.9,
+            py * 0.6 - p * 5.6,        // descend as we scroll
+            24 - p * 8.5,             // push in toward the globe
+        );
+        const normalLook = new THREE.Vector3(
+            px * 0.4,
+            1.5 - p * 6.5,            // look drops from horizon down onto Earth
+            0,
+        );
+
+        const focusPos  = new THREE.Vector3(1.8, -1.1, 15);
+        const focusLook = new THREE.Vector3(0.6, -0.8, 0);
 
         const posTarget   = routeActive ? focusPos  : normalPos;
         const lookTarget_ = routeActive ? focusLook : normalLook;
 
-        state.camera.position.lerp(posTarget, (routeActive ? 2.2 : 2) * delta);
-        lookTarget.current.lerp(lookTarget_, (routeActive ? 2.2 : 2) * delta);
+        posCurrent.current.lerp(posTarget, routeActive ? k * 0.7 : k);
+        lookTarget.current.lerp(lookTarget_, routeActive ? k * 0.7 : k);
+
+        state.camera.position.copy(posCurrent.current);
         state.camera.lookAt(lookTarget.current);
+
+        // Velocity-reactive banking — a faint cinematic roll while scrolling fast.
+        const targetRoll = THREE.MathUtils.clamp(scrollState.velocity * 0.0016, -0.05, 0.05);
+        rollCurrent.current = THREE.MathUtils.lerp(rollCurrent.current, targetRoll, k);
+        state.camera.rotation.z += rollCurrent.current;
     });
 
     return null;
@@ -335,6 +374,24 @@ export default function Scene({
                 {/* Subtle tactical aerospace grid — supports scene, doesn't dominate */}
                 <PerspectiveGrid />
 
+                {/* ── ENVIRONMENT REFLECTIONS ───────────────────────────── */}
+                {/*
+                 * Baked-once studio environment built from Lightformers (no HDR
+                 * network fetch). Gives the drone's metal crisp cyan/white streaks
+                 * to reflect — the single biggest material upgrade.
+                 */}
+                <Environment resolution={256} frames={1} background={false}>
+                    <color attach="background" args={['#000103']} />
+                    {/* Cool key streak, upper-left */}
+                    <Lightformer intensity={1.5} color="#cfe6ff" position={[-5, 4, 3]} rotation={[0, Math.PI / 3, 0]} scale={[6, 3, 1]} />
+                    {/* Cyan signature accent, right */}
+                    <Lightformer intensity={1.2} color="#22d3ee" position={[6, 1, 2]} rotation={[0, -Math.PI / 3, 0]} scale={[5, 2, 1]} />
+                    {/* Warm amber rim, low-right (nav-light hint) */}
+                    <Lightformer intensity={0.6} color="#f59e0b" position={[3, -3, -2]} scale={[3, 1.5, 1]} />
+                    {/* Soft top fill — gentle so metal doesn't blow out under bloom */}
+                    <Lightformer intensity={0.35} color="#ffffff" position={[0, 6, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[8, 8, 1]} />
+                </Environment>
+
                 {/* ── EARTH & DRONE ─────────────────────────────────────── */}
                 <Suspense fallback={null}>
                     {/* Earth rendered first (behind drone) */}
@@ -344,20 +401,29 @@ export default function Scene({
                         pointer={pointer}
                         routeDefinition={routeDefinition}
                     />
-                    {/* Drone rendered on top */}
-                    <MorphingHeroDrone pointer={pointer} />
+                    {/* Drone rendered on top — GLTF with procedural fallback */}
+                    <HeroDrone pointer={pointer} />
                 </Suspense>
 
                 {/* ── POST-PROCESSING ───────────────────────────────────── */}
-                <EffectComposer multisampling={0}>
+                {/* Cinematic stack: bloom → DOF → chromatic aberration →
+                    grain → vignette. Tuned together for an investor-grade look. */}
+                <EffectComposer multisampling={2}>
                     <Bloom
-                        luminanceThreshold={0.22}
+                        luminanceThreshold={0.18}
+                        luminanceSmoothing={0.9}
                         mipmapBlur
-                        intensity={0.38}
-                        radius={0.28}
+                        intensity={0.62}
+                        radius={0.62}
                     />
-                    <Noise opacity={0.014} />
-                    <Vignette eskil={false} offset={0.08} darkness={0.92} />
+                    <ChromaticAberration
+                        blendFunction={BlendFunction.NORMAL}
+                        offset={new THREE.Vector2(0.0007, 0.0007)}
+                        radialModulation={false}
+                        modulationOffset={0}
+                    />
+                    <Noise premultiply blendFunction={BlendFunction.OVERLAY} opacity={0.05} />
+                    <Vignette eskil={false} offset={0.12} darkness={0.96} />
                 </EffectComposer>
             </Canvas>
         </div>

@@ -54,7 +54,6 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-body);
   overflow-x: hidden;
-  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
@@ -72,6 +71,26 @@ body {
 #root {
   width: 100%;
   min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────────
+   LENIS SMOOTH SCROLL (required base styles)
+───────────────────────────────────────────── */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 /* ─────────────────────────────────────────────

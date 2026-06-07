@@ -2,6 +2,100 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import DataStreams from './DataStreams';
+
+/* ───────────────────────────────────────────────────────────
+   EARTH SURFACE SHADER — day/night terminator
+   Blends the blue-marble day map with the city-lights night map
+   across a soft terminator driven by a world-space sun direction.
+   City lights only glow on the dark side; a cool rim-light adds
+   atmospheric scatter at the limb.
+─────────────────────────────────────────────────────────── */
+const EARTH_VERT = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    vUv = uv;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+const EARTH_FRAG = /* glsl */ `
+  uniform sampler2D dayMap;
+  uniform sampler2D nightMap;
+  uniform vec3 sunDirection;
+  uniform vec3 cameraPos;
+  uniform vec3 atmosphereColor;
+  varying vec2 vUv;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+
+  void main() {
+    vec3 n = normalize(vWorldNormal);
+    vec3 viewDir = normalize(cameraPos - vWorldPos);
+
+    float sun = dot(n, normalize(sunDirection));
+    // Soft terminator band
+    float dayAmount = smoothstep(-0.18, 0.30, sun);
+
+    vec3 dayCol   = texture2D(dayMap, vUv).rgb;
+    vec3 nightCol = texture2D(nightMap, vUv).rgb;
+
+    // Lit day side: lambert-ish shaping + small ambient floor
+    float lambert = max(sun, 0.0);
+    vec3 litDay = dayCol * (0.18 + 0.95 * pow(lambert, 0.8));
+
+    // Night side: city lights, punchy on the darkest areas
+    float nightMask = 1.0 - dayAmount;
+    vec3 cities = nightCol * 2.1 * nightMask;
+    vec3 darkOcean = dayCol * 0.04; // faint earth tone in shadow
+
+    vec3 surface = mix(darkOcean + cities, litDay, dayAmount);
+
+    // Fresnel atmospheric scatter at the limb (stronger on lit side)
+    float fres = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
+    surface += atmosphereColor * fres * (0.35 + 0.65 * dayAmount);
+
+    gl_FragColor = vec4(surface, 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+
+/* ───────────────────────────────────────────────────────────
+   ATMOSPHERE SHELL SHADER — fresnel glow (rendered on BackSide)
+─────────────────────────────────────────────────────────── */
+const ATMO_VERT = /* glsl */ `
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
+    vec4 wp = modelMatrix * vec4(position, 1.0);
+    vWorldPos = wp.xyz;
+    gl_Position = projectionMatrix * viewMatrix * wp;
+  }
+`;
+
+const ATMO_FRAG = /* glsl */ `
+  uniform vec3 glowColor;
+  uniform vec3 cameraPos;
+  uniform vec3 sunDirection;
+  varying vec3 vWorldNormal;
+  varying vec3 vWorldPos;
+  void main() {
+    vec3 n = normalize(vWorldNormal);
+    vec3 viewDir = normalize(cameraPos - vWorldPos);
+    // BackSide: invert so glow concentrates at the limb
+    float fres = pow(1.0 - max(dot(n, -viewDir), 0.0), 2.4);
+    float sun = smoothstep(-0.5, 0.4, dot(-n, normalize(sunDirection)));
+    float alpha = fres * (0.25 + 0.75 * sun);
+    gl_FragColor = vec4(glowColor * (0.6 + sun), alpha);
+  }
+`;
 
 interface TacticalEarthProps {
     globeElevation?: number;
@@ -31,6 +125,11 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
     const dragOffset = useRef(new THREE.Vector2(0, 0));
     const isDragging = useRef(false);
     const navPulse = useRef(0);
+    const earthMatRef = useRef<THREE.ShaderMaterial>(null!);
+    const atmoMatRef = useRef<THREE.ShaderMaterial>(null!);
+
+    // World-space sun direction — fixed in space so day/night sweeps as Earth spins.
+    const sunDirection = useMemo(() => new THREE.Vector3(-0.55, 0.45, 0.7).normalize(), []);
 
     // 1. Load the realistic Earth textures you liked
     const [rawDayMap, rawNightMap, rawCloudsMap, rawBumpMap] = useTexture([
@@ -41,7 +140,7 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
     ]);
 
     // 2. Clone safely for the linter
-    const { nightMap, cloudsMap, bumpMap } = useMemo(() => {
+    const { nightMap, cloudsMap } = useMemo(() => {
         const night = rawNightMap.clone();
         night.colorSpace = THREE.SRGBColorSpace;
         night.anisotropy = 16;
@@ -62,6 +161,20 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
 
         return { nightMap: night, cloudsMap: clouds, bumpMap: bump };
     }, [rawDayMap, rawNightMap, rawCloudsMap, rawBumpMap]);
+
+    const earthUniforms = useMemo(() => ({
+        dayMap:          { value: rawDayMap },
+        nightMap:        { value: nightMap },
+        sunDirection:    { value: sunDirection },
+        cameraPos:       { value: new THREE.Vector3() },
+        atmosphereColor: { value: new THREE.Color('#2aa0e0') },
+    }), [rawDayMap, nightMap, sunDirection]);
+
+    const atmoUniforms = useMemo(() => ({
+        glowColor:    { value: new THREE.Color('#3aa8e8') },
+        cameraPos:    { value: new THREE.Vector3() },
+        sunDirection: { value: sunDirection },
+    }), [sunDirection]);
 
     const latLonToVector3 = (lat: number, lon: number, radius: number) => {
         const phi = (90 - lat) * (Math.PI / 180);
@@ -100,7 +213,11 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
         return { curve, line, originPoint, destPoint };
     }, [routeDefinition]);
 
-    useFrame((_, delta) => {
+    useFrame((state, delta) => {
+        // Feed live camera position to the surface + atmosphere fresnel shaders.
+        if (earthMatRef.current) earthMatRef.current.uniforms.cameraPos.value.copy(state.camera.position);
+        if (atmoMatRef.current) atmoMatRef.current.uniforms.cameraPos.value.copy(state.camera.position);
+
         const currentPointer = pointer ?? new THREE.Vector2(0, 0);
         /*
          * Cursor-responsive gyroscopic tilt: max 3.1° (0.055 rad).
@@ -182,19 +299,14 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
             }}
         >
 
-            {/* REALISTIC EARTH BASE — radius 9.0, increased day-side illumination */}
+            {/* REALISTIC EARTH BASE — custom day/night terminator shader */}
             <mesh ref={earthRef}>
-                <sphereGeometry args={[9.0, 64, 64]} />
-                <meshStandardMaterial
-                    color="#030f1e"
-                    map={rawDayMap}
-                    emissiveMap={nightMap}
-                    emissive={new THREE.Color("#0a6090")}
-                    emissiveIntensity={1.8}
-                    bumpMap={bumpMap}
-                    bumpScale={0.45}
-                    roughness={0.65}
-                    metalness={0.04}
+                <sphereGeometry args={[9.0, 96, 96]} />
+                <shaderMaterial
+                    ref={earthMatRef}
+                    vertexShader={EARTH_VERT}
+                    fragmentShader={EARTH_FRAG}
+                    uniforms={earthUniforms}
                 />
             </mesh>
 
@@ -225,39 +337,34 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
                 />
             </mesh>
 
-            {/* ATMOSPHERIC HALO — primary glow, strong blue horizon */}
+            {/* ATMOSPHERE — fresnel glow shell (sun-aware, concentrates at limb) */}
             <mesh ref={atmosphereRef}>
-                <sphereGeometry args={[9.38, 64, 64]} />
-                <meshBasicMaterial
-                    color="#1a90d0"
+                <sphereGeometry args={[9.55, 96, 96]} />
+                <shaderMaterial
+                    ref={atmoMatRef}
+                    vertexShader={ATMO_VERT}
+                    fragmentShader={ATMO_FRAG}
+                    uniforms={atmoUniforms}
                     transparent
-                    opacity={0.22}
                     side={THREE.BackSide}
                     blending={THREE.AdditiveBlending}
-                />
-            </mesh>
-            {/* Secondary atmosphere — broader scatter */}
-            <mesh>
-                <sphereGeometry args={[9.68, 48, 48]} />
-                <meshBasicMaterial
-                    color="#0a5a90"
-                    transparent
-                    opacity={0.10}
-                    side={THREE.BackSide}
-                    blending={THREE.AdditiveBlending}
+                    depthWrite={false}
                 />
             </mesh>
             {/* Outer limb glow — separates Earth from deep space */}
             <mesh>
                 <sphereGeometry args={[9.95, 48, 48]} />
                 <meshBasicMaterial
-                    color="#042844"
+                    color="#0a3a60"
                     transparent
-                    opacity={0.055}
+                    opacity={0.07}
                     side={THREE.BackSide}
                     blending={THREE.AdditiveBlending}
                 />
             </mesh>
+
+            {/* DATA STREAMS — GPU-animated particle atmosphere around the globe */}
+            <DataStreams />
 
             {/* ORBITAL PATHS — max 3, sit behind logo/headline/content.
                 Interact only with Earth and Drone. */}
