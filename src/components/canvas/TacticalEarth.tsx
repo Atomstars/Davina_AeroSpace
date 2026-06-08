@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import { scrollState } from '../../lib/scroll';
 
 /* ───────────────────────────────────────────────────────────
    EARTH SURFACE SHADER — day/night terminator
@@ -95,6 +96,40 @@ const ATMO_FRAG = /* glsl */ `
     gl_FragColor = vec4(glowColor * (0.6 + sun), alpha);
   }
 `;
+
+/* ───────────────────────────────────────────────────────────
+   ORBIT SATELLITE — a small craft that tracks around an orbit ring.
+   Placed as a child of a tilted ring group so it inherits the orbit's
+   inclination; its own group spins about Z (the ring's axis) to travel
+   along the ring. Body + two solar panels + a faint nav light.
+─────────────────────────────────────────────────────────── */
+function OrbitSatellite({ radius, speed, phase = 0 }: { radius: number; speed: number; phase?: number }) {
+    const ref = useRef<THREE.Group>(null!);
+    useFrame((_, delta) => {
+        if (ref.current) ref.current.rotation.z += delta * speed;
+    });
+    return (
+        <group ref={ref} rotation={[0, 0, phase]}>
+            <group position={[radius, 0, 0]}>
+                {/* body */}
+                <mesh>
+                    <boxGeometry args={[0.16, 0.16, 0.26]} />
+                    <meshStandardMaterial color="#e8f2fc" metalness={0.7} roughness={0.3} emissive="#3fd0ff" emissiveIntensity={0.4} toneMapped={false} />
+                </mesh>
+                {/* solar panels */}
+                <mesh position={[0.34, 0, 0]}>
+                    <boxGeometry args={[0.42, 0.02, 0.2]} />
+                    <meshStandardMaterial color="#0b294a" metalness={0.5} roughness={0.4} emissive="#1e6fb0" emissiveIntensity={0.55} toneMapped={false} />
+                </mesh>
+                <mesh position={[-0.34, 0, 0]}>
+                    <boxGeometry args={[0.42, 0.02, 0.2]} />
+                    <meshStandardMaterial color="#0b294a" metalness={0.5} roughness={0.4} emissive="#1e6fb0" emissiveIntensity={0.55} toneMapped={false} />
+                </mesh>
+                <pointLight color="#7de2ff" intensity={0.5} distance={2.4} />
+            </group>
+        </group>
+    );
+}
 
 interface TacticalEarthProps {
     globeElevation?: number;
@@ -230,18 +265,26 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
         targetTilt.current.lerp(baseTilt, Math.min(delta * 4.6, 1));
         currentTilt.current.lerp(targetTilt.current, Math.min(delta * 7.2, 1));
 
+        /*
+         * Scroll reactivity — the globe spins faster while the user scrolls
+         * (velocity) and accumulates a progress-linked offset, so moving down
+         * the page reads as travelling around the planet rather than watching
+         * a fixed backdrop. Velocity term is clamped to stay authoritative.
+         */
+        const scrollSpin = THREE.MathUtils.clamp(scrollState.velocity * 0.00018, -0.03, 0.03);
+
         if (globeGroupRef.current) {
             gyroPhase.current += delta * 0.85;
             // Slowed from 0.03 → 0.015: mission-control gyroscopic rotation, not showcase animation
-            globeGroupRef.current.rotation.y += delta * (showNavigation ? 0.005 : 0.015);
+            globeGroupRef.current.rotation.y += delta * (showNavigation ? 0.005 : 0.015) + scrollSpin;
             // Reduced wobble amplitude 0.03 → 0.015: authoritative slow gyro movement
             globeGroupRef.current.rotation.x = currentTilt.current.x + Math.sin(gyroPhase.current) * (showNavigation ? 0.008 : 0.015);
             globeGroupRef.current.rotation.z = currentTilt.current.y + Math.sin(gyroPhase.current * 0.55) * (showNavigation ? 0.008 : 0.015);
         }
-        
+
         if (cloudsRef.current) {
-            cloudsRef.current.rotation.y += delta * 0.03;
-            cloudsRef.current.rotation.x += delta * 0.002; 
+            cloudsRef.current.rotation.y += delta * 0.03 + scrollSpin * 0.6;
+            cloudsRef.current.rotation.x += delta * 0.002;
         }
 
         if (ringsRef.current) {
@@ -368,34 +411,29 @@ export default function TacticalEarth({ globeElevation = -4.5, showNavigation = 
                 {/* Orbit 1 — primary ISR orbit, inner */}
                 <group rotation={[Math.PI / 2.1, 0, 0]}>
                     <mesh>
-                        <torusGeometry args={[10.5, 0.012, 16, 100]} />
-                        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.28} />
+                        <torusGeometry args={[10.5, 0.02, 16, 140]} />
+                        <meshBasicMaterial color="#0ea5e9" transparent opacity={0.42} toneMapped={false} />
                     </mesh>
-                    <mesh position={[10.5, 0, 0]}>
-                        <sphereGeometry args={[0.06, 16, 16]} />
-                        <meshBasicMaterial color="#ffffff" />
-                        <pointLight color="#0ea5e9" intensity={0.7} distance={1.5} />
-                    </mesh>
+                    <OrbitSatellite radius={10.5} speed={0.26} phase={0} />
+                    <OrbitSatellite radius={10.5} speed={0.26} phase={2.4} />
                 </group>
 
                 {/* Orbit 2 — higher inclined orbit */}
                 <group rotation={[Math.PI / 1.8, 0.4, 0]}>
                     <mesh>
-                        <torusGeometry args={[11.8, 0.010, 16, 100]} />
-                        <meshBasicMaterial color="#38bdf8" transparent opacity={0.18} />
+                        <torusGeometry args={[11.8, 0.018, 16, 140]} />
+                        <meshBasicMaterial color="#38bdf8" transparent opacity={0.30} toneMapped={false} />
                     </mesh>
-                    <mesh position={[-11.8, 0, 0]}>
-                        <sphereGeometry args={[0.05, 16, 16]} />
-                        <meshBasicMaterial color="#e0f0ff" />
-                    </mesh>
+                    <OrbitSatellite radius={11.8} speed={-0.19} phase={1.1} />
                 </group>
 
-                {/* Orbit 3 — distant high orbit, faintest */}
+                {/* Orbit 3 — distant high orbit */}
                 <group rotation={[Math.PI / 2.6, 1.1, 0.3]}>
                     <mesh>
-                        <torusGeometry args={[13.2, 0.008, 16, 100]} />
-                        <meshBasicMaterial color="#0284c7" transparent opacity={0.11} />
+                        <torusGeometry args={[13.2, 0.016, 16, 140]} />
+                        <meshBasicMaterial color="#0284c7" transparent opacity={0.22} toneMapped={false} />
                     </mesh>
+                    <OrbitSatellite radius={13.2} speed={0.14} phase={2.7} />
                 </group>
             </group>
 

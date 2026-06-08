@@ -31,6 +31,31 @@ export function getLenis() {
  */
 export function useSmoothScroll() {
     useEffect(() => {
+        // Respect the user's reduced-motion preference: skip Lenis entirely and
+        // let the browser handle native scrolling. We still keep scrollState in
+        // sync via a lightweight scroll listener so the 3D camera reads progress.
+        const prefersReduced =
+            typeof window !== 'undefined' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        if (prefersReduced) {
+            const onScroll = () => {
+                const vh = window.innerHeight || 1;
+                const docScrollable = Math.max(
+                    1,
+                    document.documentElement.scrollHeight - window.innerHeight,
+                );
+                const scroll = window.scrollY;
+                scrollState.scrollY = scroll;
+                scrollState.velocity = 0;
+                scrollState.progress = Math.min(1, Math.max(0, scroll / docScrollable));
+                scrollState.heroProgress = Math.min(1, Math.max(0, scroll / vh));
+            };
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+            return () => window.removeEventListener('scroll', onScroll);
+        }
+
         const instance = new Lenis({
             duration: 1.15,
             // gentle, premium ease-out — long tail like Active Theory

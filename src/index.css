@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700;800&family=Barlow+Condensed:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────
@@ -20,10 +20,11 @@
   --color-text-secondary: #94a3b8;
   --color-text-muted:  #475569;
 
-  /* Typography — Barlow for aerospace precision, Inter for body */
-  --font-display: 'Barlow', 'Inter', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-mono:    'Barlow Condensed', 'JetBrains Mono', monospace;
+  /* Typography — Space Grotesk for engineered display, Manrope for body.
+     Distinctive, license-clear (OFL); deliberately avoids Inter/Roboto/Arial. */
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    'Manrope', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Space Grotesk', monospace;
 
   /* Spacing scale */
   --section-py-sm:  4rem;
@@ -115,10 +116,10 @@ html.lenis body {
 
 .heading-section {
   font-family: var(--font-display);
-  font-size: clamp(1.75rem, 3.5vw, 3.25rem);
+  font-size: clamp(2rem, 4vw, 3.75rem);
   font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .heading-card {
@@ -334,18 +335,10 @@ html.lenis body {
 }
 
 /* ─────────────────────────────────────────────
-   SCROLL REVEAL BASE
+   SCROLL REVEAL
+   Reveals are handled by the Framer motion system (src/lib/motion.ts +
+   <Reveal>), not CSS — see <MotionConfig reducedMotion="user"> in main.tsx.
 ───────────────────────────────────────────── */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
 
 /* ─────────────────────────────────────────────
    DAVINA FRAMEWORK CARD ACCENT BAR
@@ -383,6 +376,104 @@ html.lenis body {
 ::selection {
   background: rgba(34, 211, 238, 0.25);
   color: #fff;
+}
+
+/* ═════════════════════════════════════════════
+   AMBIENT CONTENT BACKDROP
+   Living field behind the scrolled content (z-1) so the page never collapses
+   to flat black past the 3D hero. Opacity is scroll-driven from React; this is
+   purely the visual layer. All animation is GPU-composited transform/opacity.
+═════════════════════════════════════════════ */
+.ambient-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Soft dark framing top + bottom only — middle stays transparent so the live
+   3D starfield/drone shows through. Keeps text edges readable without hiding
+   the scene. */
+.ambient-backdrop::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(150% 70% at 50% -20%, rgba(8, 22, 44, 0.45), transparent 55%),
+    radial-gradient(150% 70% at 50% 120%, rgba(2, 6, 16, 0.55), transparent 55%);
+}
+
+/* Drifting nebula / light-pollution blooms — bright enough to read clearly */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.85;
+  will-change: transform;
+}
+
+.ambient-glow-1 {
+  width: 48vw;
+  height: 48vw;
+  left: -10vw;
+  top: 6vh;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.34), transparent 68%);
+  animation: ambient-drift-1 26s ease-in-out infinite;
+}
+
+.ambient-glow-2 {
+  width: 44vw;
+  height: 44vw;
+  right: -8vw;
+  top: 40vh;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.32), transparent 68%);
+  animation: ambient-drift-2 32s ease-in-out infinite;
+}
+
+.ambient-glow-3 {
+  width: 40vw;
+  height: 40vw;
+  left: 24vw;
+  bottom: -10vh;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.26), transparent 68%);
+  animation: ambient-drift-3 38s ease-in-out infinite;
+}
+
+@keyframes ambient-drift-1 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(6vw, 4vh); }
+}
+@keyframes ambient-drift-2 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-5vw, -3vh); }
+}
+@keyframes ambient-drift-3 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(3vw, -5vh); }
+}
+
+/* Faint persistent starfield (static dots, gentle twinkle) */
+.ambient-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 18% 28%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1px 1px at 68% 58%, rgba(255, 255, 255, 0.40), transparent),
+    radial-gradient(1px 1px at 38% 78%, rgba(255, 255, 255, 0.45), transparent),
+    radial-gradient(1.5px 1.5px at 84% 18%, rgba(180, 220, 255, 0.55), transparent),
+    radial-gradient(1px 1px at 54% 12%, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 9% 66%, rgba(255, 255, 255, 0.32), transparent),
+    radial-gradient(1px 1px at 92% 74%, rgba(255, 255, 255, 0.32), transparent),
+    radial-gradient(1.5px 1.5px at 30% 50%, rgba(200, 230, 255, 0.40), transparent);
+  background-repeat: no-repeat;
+  opacity: 0.6;
+  animation: ambient-twinkle 6.5s ease-in-out infinite;
+}
+
+@keyframes ambient-twinkle {
+  0%, 100% { opacity: 0.42; }
+  50%      { opacity: 0.7; }
 }
 
 /* ═════════════════════════════════════════════
@@ -464,10 +555,10 @@ html.lenis body {
 /* ── Headline — precision aerospace engineering aesthetic ── */
 .hero-headline {
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 3.2vw, 3.0rem);
+  font-size: clamp(1.75rem, 3.6vw, 3.4rem);
   font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.025em;   /* tighter — engineered, not advertised */
+  line-height: 1.05;
+  letter-spacing: -0.03em;   /* tighter — engineered, not advertised */
   color: #e8eef4;
   text-align: center;
   text-wrap: balance;
@@ -579,7 +670,7 @@ html.lenis body {
   }
 
   .hero-headline {
-    font-size: clamp(2.2rem, 3.8vw, 3.4rem);
+    font-size: clamp(2.4rem, 4vw, 3.8rem);
   }
 }
 
@@ -590,7 +681,30 @@ html.lenis body {
   }
 
   .hero-headline {
-    font-size: clamp(2.6rem, 3.2vw, 3.8rem);
+    font-size: clamp(2.8rem, 3.4vw, 4.2rem);
+  }
+}
+
+/* ═════════════════════════════════════════════
+   REDUCED MOTION
+   Framer motion is gated globally via <MotionConfig reducedMotion="user">.
+   This block neutralizes the CSS-driven motion (looping scanline, hover
+   transitions) that Framer doesn't control, and shortens any remaining
+   transitions to a near-instant cross-fade.
+═════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Looping ambient scanline — hide entirely */
+  .scanline {
+    display: none !important;
   }
 }
 

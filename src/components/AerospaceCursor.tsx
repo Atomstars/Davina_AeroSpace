@@ -15,23 +15,22 @@ import { useEffect, useRef, useState } from 'react';
  * Hidden on touch-only devices (hover: none).
  */
 
-const OUTER_RING   = 80;   // px
 const BRACKET_SIZE = 30;   // px — corner bracket square extent
 const CROSS_ARM    = 10;   // px — half-length of center crosshair arm
 const COORD_OFFSET = 52;   // px — coordinate block offset from cursor center
 
 export default function AerospaceCursor() {
     const wrapRef   = useRef<HTMLDivElement>(null);
-    const ringRef   = useRef<HTMLDivElement>(null);
     const crossHRef = useRef<HTMLDivElement>(null); // horizontal arm
     const crossVRef = useRef<HTMLDivElement>(null); // vertical arm
     const coordXRef = useRef<HTMLSpanElement>(null);
     const coordYRef = useRef<HTMLSpanElement>(null);
 
+    const labelRef  = useRef<HTMLDivElement>(null);
     const mousePos  = useRef({ x: -400, y: -400 });
-    const ringPos   = useRef({ x: -400, y: -400 });
-    const ringRot   = useRef(0);
+    const hasMoved  = useRef(false);
     const isHover   = useRef(false);
+    const hoverType = useRef<'none' | 'link' | 'input'>('none');
     const rafId     = useRef<number>(0);
 
     const [show, setShow] = useState(false);
@@ -46,17 +45,25 @@ export default function AerospaceCursor() {
 
         const onMove = (e: MouseEvent) => {
             mousePos.current = { x: e.clientX, y: e.clientY };
+            hasMoved.current = true;
         };
         const onOver = (e: MouseEvent) => {
             const el = e.target as HTMLElement;
-            if (el.closest('a, button, [role="button"], input, textarea')) {
+            const field = el.closest('input, textarea');
+            const link = el.closest('a, button, [role="button"]');
+            if (field) {
                 isHover.current = true;
+                hoverType.current = 'input';
+            } else if (link) {
+                isHover.current = true;
+                hoverType.current = 'link';
             }
         };
         const onOut = (e: MouseEvent) => {
             const rel = e.relatedTarget as HTMLElement | null;
             if (!rel?.closest('a, button, [role="button"], input, textarea')) {
                 isHover.current = false;
+                hoverType.current = 'none';
             }
         };
 
@@ -64,7 +71,6 @@ export default function AerospaceCursor() {
         document.addEventListener('mouseover', onOver, { passive: true });
         document.addEventListener('mouseout',  onOut,  { passive: true });
 
-        const LERP = 0.12;
         const W    = window.innerWidth;
         const H    = window.innerHeight;
 
@@ -72,30 +78,21 @@ export default function AerospaceCursor() {
             const mx = mousePos.current.x;
             const my = mousePos.current.y;
 
-            // Ring trails with lerp
-            ringPos.current.x += (mx - ringPos.current.x) * LERP;
-            ringPos.current.y += (my - ringPos.current.y) * LERP;
-            const rx = ringPos.current.x;
-            const ry = ringPos.current.y;
-
-            // Outer ring slowly rotates
-            ringRot.current += 0.15; // degrees per frame
             const hov = isHover.current;
-            const ringScale = hov ? 1.25 : 1;
+            const type = hoverType.current;
+            // Subtle scale feedback on interactive targets.
+            const scale = type === 'input' ? 1.35 : hov ? 1.2 : 1;
 
             if (wrapRef.current) {
-                wrapRef.current.style.transform = `translate3d(${mx}px,${my}px,0)`;
-                wrapRef.current.style.opacity   = mx < -100 ? '0' : '1';
+                // Hidden until the pointer has actually moved into the page, so
+                // the reticle never parks in the top-left corner at rest.
+                const onScreen = hasMoved.current && mx >= 0 && my >= 0;
+                wrapRef.current.style.opacity   = onScreen ? '1' : '0';
+                wrapRef.current.style.transform = `translate3d(${mx}px,${my}px,0) scale(${scale})`;
             }
-            if (ringRef.current) {
-                const off = (OUTER_RING * ringScale) / 2;
-                ringRef.current.style.transform =
-                    `translate3d(${rx - mx - off}px,${ry - my - off}px,0) rotate(${ringRot.current}deg)`;
-                ringRef.current.style.width  = `${OUTER_RING * ringScale}px`;
-                ringRef.current.style.height = `${OUTER_RING * ringScale}px`;
-                ringRef.current.style.borderColor = hov
-                    ? 'rgba(34,211,238,0.85)'
-                    : 'rgba(34,211,238,0.50)';
+            if (labelRef.current) {
+                const next = type === 'input' ? 'ENTRY' : type === 'link' ? 'LOCK' : 'TRACK';
+                if (labelRef.current.textContent !== next) labelRef.current.textContent = next;
             }
 
             // Live coordinates (normalised -1…1, 4dp)
@@ -134,7 +131,7 @@ export default function AerospaceCursor() {
     return (
         <>
             {/* ── Master wrapper — follows cursor exactly ── */}
-            <div ref={wrapRef} aria-hidden style={{ ...base, willChange: 'transform', transition: 'opacity 0.2s' }}>
+            <div ref={wrapRef} aria-hidden style={{ ...base, opacity: 0, willChange: 'transform', transition: 'opacity 0.2s' }}>
 
                 {/* 1 ── Center precision dot */}
                 <div style={{
@@ -215,42 +212,10 @@ export default function AerospaceCursor() {
                 }}>
                     <div>AXIS_X <span ref={coordXRef} style={{ color: white60 }}>0.0000</span></div>
                     <div>AXIS_Y <span ref={coordYRef} style={{ color: white60 }}>0.0000</span></div>
-                    <div style={{ color: 'rgba(34,211,238,0.35)', marginTop: 4, fontSize: 7, letterSpacing: '0.12em' }}>
+                    <div ref={labelRef} style={{ color: 'rgba(34,211,238,0.35)', marginTop: 4, fontSize: 7, letterSpacing: '0.12em' }}>
                         TRACK
                     </div>
                 </div>
-            </div>
-
-            {/* ── Outer ring — separate element so it can trail independently ── */}
-            <div
-                ref={ringRef}
-                aria-hidden
-                style={{
-                    ...base,
-                    width:        OUTER_RING,
-                    height:       OUTER_RING,
-                    borderRadius: '50%',
-                    border:       `1px solid ${cyan50}`,
-                    willChange:   'transform, width, height, border-color',
-                    transition:   'width 0.2s ease, height 0.2s ease, border-color 0.2s ease',
-                }}
-            >
-                {/* 4 tick marks at N/E/S/W */}
-                {[0, 90, 180, 270].map((deg) => (
-                    <div
-                        key={deg}
-                        style={{
-                            position:        'absolute',
-                            width:           1,
-                            height:          6,
-                            background:      cyan80,
-                            left:            '50%',
-                            top:             0,
-                            transformOrigin: `0.5px ${OUTER_RING / 2}px`,
-                            transform:       `rotate(${deg}deg) translateX(-50%)`,
-                        }}
-                    />
-                ))}
             </div>
         </>
     );

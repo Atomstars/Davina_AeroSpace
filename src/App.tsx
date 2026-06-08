@@ -1,17 +1,24 @@
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useProgress } from '@react-three/drei';
 import Scene from './components/Scene';
 import Navbar from './components/Navbar';
 import AerospaceCursor from './components/AerospaceCursor';
 import VigilanceHUD from './components/VigilanceHUD';
 import DavinaLogo from './components/DavinaLogo';
+import Reveal from './components/Reveal';
+import Magnetic from './components/Magnetic';
+import AmbientBackdrop from './components/AmbientBackdrop';
 import { useSmoothScroll } from './lib/scroll';
 import {
-    Cpu, Crosshair, Rocket, Globe, ShieldCheck, Navigation,
+    heroContent, staggerContainer, staggerItem, viewportOnce, spring,
+} from './lib/motion';
+import {
+    Cpu, Crosshair, ShieldCheck, Navigation,
     Mail, MapPin, ArrowUpRight, ChevronDown, Send,
-    Radar, Zap, Target, Users, Handshake, TrendingUp,
+    Users, TrendingUp,
     Linkedin, Twitter, Github,
+    Feather, Recycle, FlaskConical, Satellite, Plane,
 } from 'lucide-react';
 
 // ── TYPES ───────────────────────────────────────────────
@@ -37,20 +44,11 @@ type TeamMember = {
 };
 
 // ── SECTION WRAPPER ─────────────────────────────────────
+// Reveals are now self-contained Framer components (<Reveal> / staggered
+// motion children), so the section is a plain semantic wrapper.
 function Section({ id, children, className = '' }: { id: string; children: React.ReactNode; className?: string }) {
-    const ref = useRef<HTMLElement>(null);
-    useEffect(() => {
-        const el = ref.current;
-        if (!el) return;
-        const obs = new IntersectionObserver(
-            ([entry]) => { if (entry.isIntersecting) el.querySelectorAll('.reveal').forEach(r => r.classList.add('visible')); },
-            { threshold: 0.08 }
-        );
-        obs.observe(el);
-        return () => obs.disconnect();
-    }, []);
     return (
-        <section ref={ref} id={id} className={className}>
+        <section id={id} className={className}>
             {children}
         </section>
     );
@@ -116,51 +114,51 @@ export default function App() {
     const acronyms: AcronymItem[] = [
         {
             letter: 'D', title: 'Defence', icon: <ShieldCheck size={20} />,
-            mission: 'Securing the skies. Protecting allied nations.',
-            desc: 'Advanced defence aerospace systems for national security, strategic readiness, and reliable allied-nation support — built to operate at the limits of operational demand.',
-            tech: ['Unmanned Combat Aerial Vehicles', 'Hardened Command Systems', 'Counter-UAS Platforms'],
-            applications: ['Border Surveillance', 'Rapid Response', 'Strategic Strike'],
-            phase: 'Active Development', phaseNum: 1,
+            mission: 'Reusable tactical hardware. Zero per-engagement disposal.',
+            desc: 'Reusable tactical interceptors that recover, refuel, and re-deploy — eliminating the single-use missile cycle that makes conventional interception financially unsustainable at operational tempo.',
+            tech: ['Reusable Interceptors', 'Autonomous Return-to-Base', 'Low-Acoustic SMA Control'],
+            applications: ['Border Interdiction', 'Adaptive Re-engagement', 'Covert Low-Altitude Patrol'],
+            phase: 'R&D', phaseNum: 2,
         },
         {
-            letter: 'A', title: 'Avionics', icon: <Cpu size={20} />,
-            mission: 'The intelligence core of every aerospace platform.',
-            desc: 'Flight control systems, mission computers, communication architectures, and integrated electronic systems engineered for precision and mission reliability.',
-            tech: ['Flight Control Units', 'Mission Data Processors', 'Secure Comms Arrays'],
-            applications: ['Cockpit Integration', 'Sensor Fusion', 'Fault-Tolerant Systems'],
-            phase: 'Active Development', phaseNum: 1,
+            letter: 'A', title: 'Aerospace', icon: <Plane size={20} />,
+            mission: 'Bio-inspired morphing-wing flight, validated.',
+            desc: 'Solid-state Nitinol SMA actuators embedded in the trailing edge replace every hinged control surface — a gapless, continuous aerodynamic profile that adapts camber in real time, proven on DRONE MARK 1.',
+            tech: ['Nitinol SMA Morphing Wing', 'Gapless Camber Control', 'Eppler 250 Airfoil'],
+            applications: ['VTOL → Fixed-Wing UAV', 'Low-Reynolds Flight', 'Silent Manoeuvring'],
+            phase: 'Validated', phaseNum: 1,
         },
         {
             letter: 'V', title: 'Vigilance', icon: <Crosshair size={20} />,
-            mission: 'Eyes on every horizon. Always.',
-            desc: 'Airborne surveillance platforms, sensor fusion networks, and intelligence-gathering architectures for persistent, wide-area situational awareness.',
-            tech: ['Multi-Spectral Sensors', 'Real-Time Data Relay', 'Target Classification AI'],
-            applications: ['ISR Missions', 'Maritime Patrol', 'Infrastructure Monitoring'],
-            phase: 'Research Phase', phaseNum: 2,
+            mission: '111 minutes of persistent eyes on every horizon.',
+            desc: 'DRONE MARK 1 carries modular ISR payloads (NDVI, FLIR, SAR) with a calculated 111-minute cruise endurance at 11.5 W — engineered for long-loiter surveillance where conventional multirotors last minutes.',
+            tech: ['NDVI / FLIR / SAR Payloads', '111-min Cruise Endurance', 'Modular Payload Bay'],
+            applications: ['Border Surveillance', 'ISR Loiter', 'Agricultural & SAR Mapping'],
+            phase: 'Validated', phaseNum: 1,
         },
         {
-            letter: 'I', title: 'Intelligence', icon: <Globe size={20} />,
-            mission: 'Machines that learn. Platforms that adapt.',
-            desc: 'Artificial intelligence, autonomous decision-making, predictive mission analytics, and adaptive flight systems for smarter, faster aerospace operations.',
-            tech: ['Onboard Neural Networks', 'Adaptive Mission Planning', 'Threat Prediction Models'],
-            applications: ['Autonomous Operations', 'Combat Intelligence', 'Fleet Coordination'],
-            phase: 'Research Phase', phaseNum: 2,
+            letter: 'I', title: 'Intelligence', icon: <Cpu size={20} />,
+            mission: 'A GNC stack that learns once and flies everywhere.',
+            desc: 'The Guidance, Navigation & Control software validated on the 3-second VTOL transition becomes the foundational autonomy layer for the Phase 2 interceptor and Phase 3 orbital return vectoring.',
+            tech: ['GNC Software Stack', 'PWM Thermal Actuation Loop', 'Raspberry Pi Zero 2W'],
+            applications: ['Autonomous Transition', 'Terminal-Phase Control', 'Return Vectoring'],
+            phase: 'Validated', phaseNum: 1,
         },
         {
             letter: 'N', title: 'Navigation', icon: <Navigation size={20} />,
-            mission: 'Precision routing in any environment, anywhere.',
-            desc: 'Resilient guidance systems, autonomous route optimization, and high-accuracy positioning that operates reliably even in GPS-denied or contested environments.',
-            tech: ['INS/GNSS Fusion', 'Terrain-Referenced Nav', 'Swarm Coordination Protocols'],
-            applications: ['GPS-Denied Ops', 'Precision Delivery', 'Hostile Airspace Transit'],
-            phase: 'Research Phase', phaseNum: 2,
+            mission: 'Autonomous return-and-refly as a primary load case.',
+            desc: 'Autonomous vertical return-to-base guidance is engineered in from the first sketch — the control logic that lets a Davina platform recover itself instead of being discarded after every mission.',
+            tech: ['Vertical Return-to-Base', 'Attitude & Recovery Control', 'Dynamically Stable (λ −0.5 ± 1.41i)'],
+            applications: ['Recoverable Flight', 'Controlled De-orbit', 'Precision Placement'],
+            phase: 'R&D', phaseNum: 2,
         },
         {
-            letter: 'A', title: 'Advancement', icon: <Rocket size={20} />,
-            mission: 'Engineering excellence for the next generation of flight.',
-            desc: 'Research, bold experimentation, advanced manufacturing, and breakthrough innovation that defines Davina\'s roadmap for the future of aerospace.',
-            tech: ['Next-Gen Propulsion', 'Additive Manufacturing', 'Composite Structures R&D'],
-            applications: ['Future Platforms', 'Space-Adjacent Systems', 'Technology Licensing'],
-            phase: 'Research Phase', phaseNum: 2,
+            letter: 'A', title: 'Advancement', icon: <FlaskConical size={20} />,
+            mission: 'Green propellants and permanent space infrastructure.',
+            desc: 'Proprietary high-energy-density green chemical propellants maximise specific impulse and eliminate toxic residuals — the propulsive foundation for reusable Orbital Transfer Vehicles and lasting space infrastructure.',
+            tech: ['Green Chemical Propellant', 'Reusable OTVs', 'Debris-Elimination Protocol'],
+            applications: ['Orbital Logistics', 'Satellite Placement', 'Permanent Infrastructure'],
+            phase: 'R&D', phaseNum: 3,
         },
     ];
 
@@ -172,7 +170,7 @@ export default function App() {
             domains: ['Strategy', 'Partnerships', 'Investor Relations'],
         },
         {
-            name: 'Koshik Goswami', initials: 'KG',
+            name: 'Kaushik Goswami', initials: 'KG',
             role: 'COO', title: 'Chief Operations Officer',
             desc: 'Manages daily operations, project execution, manufacturing coordination, and company workflow. Ensures that the vision translates into measurable engineering progress.',
             domains: ['Operations', 'Execution', 'Manufacturing'],
@@ -180,8 +178,8 @@ export default function App() {
         {
             name: 'Ashriith', initials: 'AS',
             role: 'CTO', title: 'Chief Technology Officer',
-            desc: 'Heads all research, engineering, avionics systems, autonomous platforms, propulsion, and AI integration. The architect of Davina\'s technical roadmap.',
-            domains: ['R&D', 'Avionics', 'AI Systems'],
+            desc: 'Leads the morphing-wing SMA integration programme, GNC software development, and propellant R&D — validating every technical KPI prior to each phase transition. The architect of Davina\'s technical roadmap.',
+            domains: ['SMA Integration', 'GNC Software', 'Propellant R&D'],
         },
         {
             name: 'Siddiq', initials: 'SD',
@@ -199,51 +197,107 @@ export default function App() {
 
     const techPillars = [
         {
-            icon: <Target size={22} />,
-            title: 'Autonomous Drone Systems',
-            desc: 'Purpose-built UAV platforms engineered for surveillance, defence logistics, and tactical operations in complex and contested environments.',
-            tags: ['UAV Platforms', 'Tactical Systems', 'Autonomous Control'],
-            id: 'tech-autonomous',
+            icon: <Feather size={22} />,
+            title: 'Morphing-Wing Flight Intelligence',
+            desc: 'Nitinol Shape Memory Alloy actuators embedded directly in the trailing edge eliminate hinged control surfaces entirely — a gapless, continuous profile that adapts camber in real time, like avian flight without mechanical articulation.',
+            tags: ['Nitinol SMA', 'Gapless Camber', 'Bio-Inspired'],
+            id: 'tech-morphing',
         },
         {
-            icon: <Zap size={22} />,
-            title: 'Aerospace Intelligence',
-            desc: 'AI-driven mission planning, onboard neural processing, and adaptive systems that enable real-time decision-making without ground dependency.',
-            tags: ['Mission AI', 'Neural Processing', 'Adaptive Systems'],
-            id: 'tech-ai',
+            icon: <Recycle size={22} />,
+            title: 'Structural Conservation Architecture',
+            desc: 'Every platform is designed with reusability as a primary load case, not an afterthought. Stage-detachment debris is eliminated through precision structural engineering that keeps all primary components recoverable and re-deployable.',
+            tags: ['Zero-Debris', 'Recoverable Structure', 'Reusable by Design'],
+            id: 'tech-structure',
         },
         {
-            icon: <Radar size={22} />,
-            title: 'Navigation & Guidance',
-            desc: 'Resilient multi-source positioning and autonomous routing engineered to maintain precision in GPS-denied and contested airspace environments.',
-            tags: ['GPS-Denied Ops', 'INS Fusion', 'Route Optimization'],
-            id: 'tech-nav',
+            icon: <FlaskConical size={22} />,
+            title: 'High-Energy-Density Propellant',
+            desc: 'For space logistics, Davina is developing proprietary green chemical propellants engineered to maximise specific impulse while eliminating the toxic residuals that compromise ground handling and orbital environments.',
+            tags: ['Green Chemistry', 'High Specific Impulse', 'Non-Toxic'],
+            id: 'tech-propellant',
+        },
+        {
+            icon: <Cpu size={22} />,
+            title: 'Autonomous Reusability Intelligence',
+            desc: 'The GNC software stack validated on the Phase 1 morphing-wing UAV forms the foundational control layer for autonomous vertical return-to-base — applicable directly from the tactical interceptor to the orbital transfer vehicle.',
+            tags: ['GNC Stack', 'Return-to-Base', 'Cross-Platform'],
+            id: 'tech-gnc',
         },
     ];
 
     const programs = [
         {
-            icon: <Handshake size={22} />,
-            title: 'Strategic Partnership',
-            desc: 'Joint development, technology licensing, and co-creation opportunities for defence organizations and aerospace OEMs seeking autonomous systems capability.',
-            cta: 'Discuss Partnership',
-            id: 'prog-partner',
+            icon: <ShieldCheck size={22} />,
+            title: 'Flight Trial Partners',
+            desc: 'Defence procurement officers, military R&D establishments, and DRDO-affiliated institutions are invited to engage the DRONE MARK 1 prototype for field evaluation — modular payload integration (NDVI, FLIR, SAR), full technical disclosure under NDA.',
+            cta: 'Flight Trial Enquiry',
+            id: 'prog-flighttrial',
         },
         {
             icon: <TrendingUp size={22} />,
-            title: 'Investment',
-            desc: 'Davina Aerospace is actively seeking strategic investment partners to accelerate prototype development, platform testing, and market entry.',
-            cta: 'Request Investor Brief',
+            title: 'Strategic Co-Investment',
+            desc: 'Davina is raising its seed / pre-Series A round to fund the transition from validated prototype to Phase 2 interceptor R&D and Phase 3 propellant development — three compounding, independently defensible technology moats.',
+            cta: 'Investment Enquiry',
             highlight: true,
             id: 'prog-invest',
         },
         {
             icon: <Users size={22} />,
-            title: 'Talent & Collaboration',
-            desc: 'Aerospace engineers, researchers, avionics specialists, and advisors who want to shape the next generation of Indian defence technology.',
+            title: 'Engineering Talent',
+            desc: 'Aerospace, structures, controls, and propulsion engineers who want to build reusable, material-conservative defence and space technology from Chennai — and shape India\'s deep-tech aerospace pipeline.',
             cta: 'Join the Team',
             id: 'prog-talent',
         },
+    ];
+
+    // Technology roadmap — the three core phases from the portfolio.
+    const phases = [
+        {
+            id: 'phase-1',
+            num: '01',
+            icon: <Plane size={22} />,
+            title: 'Morphing-Wing UAV',
+            codename: 'DRONE MARK 1',
+            status: 'Prototype Validated',
+            statusActive: true,
+            desc: 'A fully validated proof-of-concept for bio-inspired morphing-wing flight. All mechanical actuation is replaced by a solid-state Nitinol SMA system in a silicone elastomer trailing edge, operating in the demanding low-Reynolds regime (Re ≈ 1.62 × 10⁵) with a full VTOL-to-fixed-wing transition in 3.0 seconds.',
+            tags: ['Nitinol SMA Wing', 'VTOL Hybrid', 'CFD + MATLAB Validated'],
+        },
+        {
+            id: 'phase-2',
+            num: '02',
+            icon: <ShieldCheck size={22} />,
+            title: 'Reusable Tactical Interceptor',
+            codename: 'GNC CONTINUITY',
+            status: 'R&D Stage',
+            statusActive: false,
+            desc: 'Extends the validated GNC stack and SMA morphing surfaces into the interceptor domain. The objective is autonomous vertical return-to-base — a single-body system with recoverable propulsion that eliminates the missile-disposal cycle, with reduced radar and acoustic signature.',
+            tags: ['Vertical Return-to-Base', 'Recoverable Propulsion', 'Low-Signature'],
+        },
+        {
+            id: 'phase-3',
+            num: '03',
+            icon: <Satellite size={22} />,
+            title: 'Space Logistics & Propellants',
+            codename: 'ORBITAL TRANSFER',
+            status: 'R&D Stage',
+            statusActive: false,
+            desc: 'Entry into orbital logistics via reusable Orbital Transfer Vehicles and proprietary high-energy-density green propellants. Zero hardware abandoned per mission — every stage engineered for controlled de-orbit or recovery, toward a doctrine of permanent space infrastructure.',
+            tags: ['Reusable OTVs', 'Green Propellant', 'Zero-Debris'],
+        },
+    ];
+
+    // DRONE MARK 1 — headline validated performance figures.
+    const droneSpecs = [
+        { value: '111 min', label: 'Cruise Endurance' },
+        { value: '18 m/s', label: 'Cruise Velocity' },
+        { value: '3.0 s', label: 'VTOL Transition' },
+        { value: '14.29', label: 'Lift-to-Drag Ratio' },
+        { value: '10.42', label: 'Factor of Safety' },
+        { value: '0.888 m', label: 'Wingspan (AR 8.67)' },
+        { value: '11.5 W', label: 'Cruise Power Draw' },
+        { value: '< 1.5 s', label: 'SMA Actuation' },
     ];
 
     const handleFormSubmit = (e: React.FormEvent) => {
@@ -259,6 +313,10 @@ export default function App() {
                 routeActive={false}
                 routeDefinition={{ originLabel: '', origin: { lat: 0, lon: 0 }, destLabel: '', dest: { lat: 0, lon: 0 } }}
             />
+
+            {/* Living ambient field behind content — fades in past the hero so
+                scrolled sections never collapse to flat black. */}
+            <AmbientBackdrop />
 
             {/* Custom precision cursor — hides on touch devices automatically */}
             <AerospaceCursor />
@@ -310,56 +368,64 @@ export default function App() {
                     id="home"
                     className="hero-section"
                 >
+                    {/*
+                        Hero entrance is bound to preloader completion (!isBooting),
+                        not a fixed delay — children stagger in once the scene is ready.
+                    */}
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.75, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                        variants={staggerContainer}
+                        initial="hidden"
+                        animate={isBooting ? 'hidden' : 'visible'}
                         className="hero-content"
                     >
                         {/* ── COUNTRY IDENTIFIER ── */}
-                        <div className="hero-eyebrow">
+                        <motion.div variants={staggerItem} className="hero-eyebrow">
                             <div className="hero-eyebrow-line" />
                             <span className="hero-eyebrow-text">
-                                Davina Aerospace &nbsp;·&nbsp; India
+                                Davina Aerospace &nbsp;·&nbsp; Chennai, India
                             </span>
                             <div className="hero-eyebrow-line" />
-                        </div>
+                        </motion.div>
 
                         {/* ── LOGO — Primary focal point ── */}
-                        <div className="hero-logo-wrapper">
+                        <motion.div variants={heroContent} className="hero-logo-wrapper">
                             <DavinaLogo variant="hero" />
-                        </div>
+                        </motion.div>
 
                         {/* ── HEADLINE ── */}
-                        <h1 className="hero-headline">
-                            Engineering Autonomous{' '}
-                            <span className="hero-headline-accent">Aerospace Systems</span>
-                        </h1>
+                        <motion.h1 variants={staggerItem} className="hero-headline">
+                            Engineered to{' '}
+                            <span className="hero-headline-accent">Outlast Every Mission</span>
+                        </motion.h1>
 
                         {/* ── DESCRIPTION ── */}
-                        <p className="hero-description">
-                            Intelligent unmanned platforms, advanced avionics, and
-                            next-generation aerial systems — engineered for national
-                            security and strategic operations.
-                        </p>
+                        <motion.p variants={staggerItem} className="hero-description">
+                            Morphing-wing flight intelligence, autonomous reusability, and
+                            high-energy-density propulsion — engineering permanent space
+                            infrastructure and endlessly reusable defence technologies.
+                        </motion.p>
 
                         {/* ── CTA BUTTONS ── */}
-                        <div className="hero-ctas pointer-events-auto">
-                            <a href="#technology" className="btn-primary" id="hero-cta-platform">
-                                Explore Platform
-                                <ArrowUpRight size={15} />
-                            </a>
-                            <a href="#contact" className="btn-ghost" id="hero-cta-leadership">
-                                Connect with Leadership
-                            </a>
-                        </div>
+                        <motion.div variants={staggerItem} className="hero-ctas pointer-events-auto">
+                            <Magnetic className="inline-flex">
+                                <a href="#technology" className="btn-primary" id="hero-cta-platform">
+                                    Explore Platform
+                                    <ArrowUpRight size={15} />
+                                </a>
+                            </Magnetic>
+                            <Magnetic className="inline-flex">
+                                <a href="#contact" className="btn-ghost" id="hero-cta-leadership">
+                                    Connect with Leadership
+                                </a>
+                            </Magnetic>
+                        </motion.div>
                     </motion.div>
 
-                    {/* Scroll indicator */}
+                    {/* Scroll indicator — fades in once the hero has settled */}
                     <motion.div
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 3.8, duration: 1.0 }}
+                        animate={{ opacity: isBooting ? 0 : 1 }}
+                        transition={{ delay: isBooting ? 0 : 0.9, duration: 1.0 }}
                         className="hero-scroll-cue pointer-events-none"
                     >
                         <motion.div
@@ -374,31 +440,34 @@ export default function App() {
                 {/* ═══════════════════════════════════════
                     TECHNOLOGY SECTION
                 ═══════════════════════════════════════ */}
-                <Section id="technology" className="py-20 md:py-28 px-6 md:px-12 bg-gradient-to-b from-transparent via-[#000103]/85 to-[#000103] border-t border-white/[0.05]">
+                <Section id="technology" className="py-20 md:py-28 px-6 md:px-12 bg-gradient-to-b from-transparent via-[#03060f]/40 to-[#03060f]/50 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
-                        <div className="mb-16 max-w-2xl reveal">
-                            <SectionLabel>Technology Platform</SectionLabel>
+                        <Reveal className="mb-16 max-w-2xl">
+                            <SectionLabel>The Davina Solution</SectionLabel>
                             <h2
-                                className="text-3xl md:text-5xl font-bold tracking-tight uppercase text-white mb-5"
-                                style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+                                className="heading-section uppercase text-white mb-5"
                             >
-                                Systems Built for<br />
-                                <span className="text-cyan-400">Real-World Operations</span>
+                                Re-Engineering the<br />
+                                <span className="text-cyan-400">Foundations of Flight</span>
                             </h2>
                             <p className="body-base text-slate-400 leading-relaxed">
-                                Autonomous systems engineered for the full spectrum of operational conditions — from contested airspace to GPS-denied environments and beyond.
+                                Davina re-engineers the relationship between propulsion architecture, structural material use, and flight-control intelligence — operating on simultaneous axes to eliminate the compounding failures that constrain conventional aerospace.
                             </p>
-                        </div>
+                        </Reveal>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {techPillars.map((pillar, idx) => (
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                            variants={staggerContainer}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={viewportOnce}
+                        >
+                            {techPillars.map((pillar) => (
                                 <motion.div
                                     key={pillar.id}
                                     id={pillar.id}
-                                    initial={{ opacity: 0, y: 32 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: '-60px' }}
-                                    transition={{ delay: idx * 0.1, duration: 0.5 }}
+                                    variants={staggerItem}
+                                    whileHover={{ y: -6, transition: spring.snappy }}
                                     className="card-glass p-7 group"
                                 >
                                     <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6 group-hover:bg-cyan-500/18 transition-colors">
@@ -422,37 +491,131 @@ export default function App() {
                                     </div>
                                 </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
+                    </div>
+                </Section>
+
+                {/* ═══════════════════════════════════════
+                    TECHNOLOGY ROADMAP — 3 PHASES + DRONE MARK 1 DATA SHEET
+                ═══════════════════════════════════════ */}
+                <Section id="roadmap" className="py-20 md:py-28 px-6 md:px-12 bg-[#03060f]/45 border-t border-white/[0.05]">
+                    <div className="max-w-7xl mx-auto">
+                        <Reveal className="mb-16 max-w-2xl">
+                            <SectionLabel>Technology Roadmap</SectionLabel>
+                            <h2 className="heading-section uppercase text-white mb-5">
+                                Three Phases.<br />
+                                <span className="text-cyan-400">One Doctrine.</span>
+                            </h2>
+                            <p className="body-base text-slate-400 leading-relaxed">
+                                From a validated morphing-wing UAV to reusable tactical interceptors and orbital transfer vehicles — every phase reuses the GNC, structural, and control engineering proven by the last.
+                            </p>
+                        </Reveal>
+
+                        {/* Phase cards */}
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12"
+                            variants={staggerContainer}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={viewportOnce}
+                        >
+                            {phases.map((ph) => (
+                                <motion.div
+                                    key={ph.id}
+                                    id={ph.id}
+                                    variants={staggerItem}
+                                    whileHover={{ y: -6, transition: spring.snappy }}
+                                    className="card-glass p-7 flex flex-col relative overflow-hidden"
+                                >
+                                    <div className="absolute top-3 right-5 text-7xl font-black font-mono opacity-[0.05] select-none pointer-events-none" style={{ fontFamily: 'var(--font-mono)' }}>
+                                        {ph.num}
+                                    </div>
+                                    <div className={`inline-flex items-center gap-1.5 text-[0.55rem] font-mono tracking-[0.15em] uppercase px-2.5 py-1 rounded-full mb-5 border self-start ${
+                                        ph.statusActive
+                                            ? 'bg-cyan-500/10 border-cyan-500/25 text-cyan-400'
+                                            : 'bg-white/[0.04] border-white/[0.08] text-slate-500'
+                                    }`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${ph.statusActive ? 'bg-cyan-400' : 'bg-slate-600'}`} />
+                                        Phase {ph.num} · {ph.status}
+                                    </div>
+                                    <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-5">
+                                        {ph.icon}
+                                    </div>
+                                    <p className="label-mono text-slate-500 mb-1 text-[0.55rem]">{ph.codename}</p>
+                                    <h3 className="text-lg font-semibold text-white mb-3" style={{ fontFamily: 'var(--font-display)' }}>
+                                        {ph.title}
+                                    </h3>
+                                    <p className="text-slate-400 text-sm leading-relaxed flex-1 mb-5">
+                                        {ph.desc}
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {ph.tags.map(t => (
+                                            <span key={t} className="text-[0.58rem] font-mono tracking-[0.1em] uppercase px-2 py-0.5 bg-white/[0.03] border border-white/[0.06] rounded text-slate-500">
+                                                {t}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </motion.div>
+
+                        {/* DRONE MARK 1 — validated data sheet */}
+                        <Reveal className="card-glass p-8">
+                            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-7">
+                                <div>
+                                    <p className="label-mono mb-2 text-[0.58rem]">Validated Performance · Phase 01</p>
+                                    <h3 className="text-xl md:text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>
+                                        DRONE MARK 1 — Data Sheet
+                                    </h3>
+                                </div>
+                                <span className="inline-flex items-center gap-1.5 text-[0.55rem] font-mono tracking-[0.15em] uppercase px-2.5 py-1 rounded-full border bg-cyan-500/10 border-cyan-500/25 text-cyan-400 self-start">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" /> CFD + MATLAB Validated
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-white/[0.05] rounded-lg overflow-hidden">
+                                {droneSpecs.map(s => (
+                                    <div key={s.label} className="bg-[#05080f]/70 px-4 py-5 text-center">
+                                        <p className="text-xl md:text-2xl font-bold text-white mb-1 tabular-nums" style={{ fontFamily: 'var(--font-display)' }}>
+                                            {s.value}
+                                        </p>
+                                        <p className="label-mono text-slate-500 text-[0.55rem]">{s.label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </Reveal>
                     </div>
                 </Section>
 
                 {/* ═══════════════════════════════════════
                     DAVINA FRAMEWORK SECTION
                 ═══════════════════════════════════════ */}
-                <Section id="mission" className="py-20 md:py-28 px-6 md:px-12 bg-[#000103] border-t border-white/[0.05]">
+                <Section id="mission" className="py-20 md:py-28 px-6 md:px-12 bg-[#03060f]/45 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
-                        <div className="mb-16 text-center reveal">
+                        <Reveal className="mb-16 text-center">
                             <SectionLabel>The DAVINA Framework</SectionLabel>
                             <h2
-                                className="text-3xl md:text-5xl font-bold tracking-tight uppercase text-white"
-                                style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+                                className="heading-section uppercase text-white"
                             >
-                                Six Strategic Technology<br />
-                                <span className="text-cyan-400">Divisions</span>
+                                Six Principles.<br />
+                                <span className="text-cyan-400">One Platform.</span>
                             </h2>
                             <p className="body-base text-slate-400 mt-5 max-w-xl mx-auto leading-relaxed">
-                                Each letter of DAVINA represents a core strategic division — engineering the complete aerospace technology stack of tomorrow.
+                                Each letter of DAVINA names a principle the platform is built on — from validated morphing-wing flight to the reusable interceptor and orbital logistics now in R&D.
                             </p>
-                        </div>
+                        </Reveal>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
+                            variants={staggerContainer}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={viewportOnce}
+                        >
                             {acronyms.map((item, idx) => (
                                 <motion.div
                                     key={`${item.title}-${idx}`}
-                                    initial={{ opacity: 0, y: 24 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: '-40px' }}
-                                    transition={{ delay: idx * 0.08, duration: 0.45 }}
+                                    variants={staggerItem}
+                                    whileHover={{ y: -6, transition: spring.snappy }}
                                     onClick={() => setActiveAcronym(item.title)}
                                     className={`relative card-glass p-7 cursor-pointer group overflow-hidden transition-all duration-200
                                         ${activeAcronym === item.title ? 'border-cyan-500/35 bg-cyan-900/10 davina-card-active' : ''}`}
@@ -519,63 +682,69 @@ export default function App() {
                                     </div>
                                 </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
                     </div>
                 </Section>
 
                 {/* ═══════════════════════════════════════
                     ABOUT SECTION
                 ═══════════════════════════════════════ */}
-                <Section id="about" className="py-20 md:py-28 px-6 md:px-12 bg-[#000103] border-t border-white/[0.05]">
+                <Section id="about" className="py-20 md:py-28 px-6 md:px-12 bg-[#03060f]/45 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
                         <div className="grid lg:grid-cols-[1fr_1.2fr] gap-16 items-start">
                             {/* Left */}
-                            <div className="reveal">
+                            <Reveal>
                                 <SectionLabel>About Davina</SectionLabel>
                                 <h2
-                                    className="text-3xl md:text-5xl font-bold tracking-tight uppercase text-white mb-8"
-                                    style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+                                    className="heading-section uppercase text-white mb-8"
                                 >
-                                    Built in India.<br />
-                                    <span className="text-cyan-400">Engineered</span><br />
-                                    for the World.
+                                    Reusability is<br />
+                                    <span className="text-cyan-400">the First</span><br />
+                                    Constraint.
                                 </h2>
 
                                 {/* Pillar stats */}
                                 <div className="grid grid-cols-3 gap-3">
-                                    <StatCard value="2024" label="Founded" />
-                                    <StatCard value="India" label="Headquarters" />
-                                    <StatCard value="6" label="Core Divisions" />
+                                    <StatCard value="Chennai" label="Headquarters" />
+                                    <StatCard value="3" label="Technology Phases" />
+                                    <StatCard value="MK 1" label="Prototype Validated" />
                                 </div>
-                            </div>
+                            </Reveal>
 
                             {/* Right */}
-                            <div className="space-y-6 reveal">
+                            <Reveal className="space-y-6" delay={0.12}>
                                 <p className="text-slate-300 text-base md:text-lg leading-8">
-                                    Davina Aerospace is an Indian-based private aerospace company built on one conviction: the future of defence and aerospace belongs to those bold enough to engineer it. We design advanced unmanned systems, autonomous platforms, and next-generation defence technologies — built to operate where conventional systems fall short.
+                                    Davina Aerospace is a Chennai-based deep-tech company re-engineering the foundational relationship between propulsion, structural material use, and flight-control intelligence. Our mission is to engineer reusable, material-conservative aerospace and defence technologies that outlast every mission cycle.
                                 </p>
                                 <p className="text-slate-400 text-base leading-8">
-                                    By combining rigorous engineering discipline with a vision for global operations, Davina Aerospace is positioned to deliver world-class defence and aerospace solutions from India to allied nations and international partners.
+                                    Across three phases — a validated morphing-wing UAV, a reusable tactical interceptor, and orbital transfer vehicles with proprietary green propellants — every vehicle, stage, and system is engineered to return, be rebuilt, and fly again. Nothing is discarded that was not designed to be discarded.
                                 </p>
 
-                                {/* Vision pull quote */}
+                                {/* Doctrine pull quote */}
                                 <div className="border-l-2 border-cyan-500/40 pl-5 mt-8">
                                     <p
                                         className="text-white text-lg md:text-xl font-medium leading-relaxed italic"
                                         style={{ fontFamily: 'var(--font-display)' }}
                                     >
-                                        "Our mission is to build powerful aerospace systems that redefine flight, strengthen strategic partnerships with allied nations, and expand humanity's reach beyond Earth."
+                                        "Reusability is not a feature to be added after design. It is the first constraint from which all engineering decisions must derive."
                                     </p>
+                                    <p className="label-mono text-slate-500 mt-3 text-[0.58rem]">— Davina Aerospace Engineering Doctrine</p>
                                 </div>
 
-                                <div className="flex flex-wrap gap-3 mt-4">
-                                    {['Make in India', 'Allied Nation Support', 'Mission-Critical Engineering', 'Sovereign Technology'].map(tag => (
-                                        <span key={tag} className="text-[0.62rem] font-mono tracking-[0.12em] uppercase px-3 py-1.5 bg-white/[0.04] border border-white/[0.07] rounded text-slate-400">
-                                            {tag}
-                                        </span>
+                                {/* Core engineering doctrine — North Star values */}
+                                <div className="grid sm:grid-cols-3 gap-3 mt-4">
+                                    {[
+                                        { t: 'Technical Precision', d: 'Every specification derived from validated data.' },
+                                        { t: 'Material Conservation', d: 'Every gram is accountable. Nothing wasted.' },
+                                        { t: 'Reusability Intelligence', d: 'Autonomy and recovery are load cases, not options.' },
+                                    ].map(v => (
+                                        <div key={v.t} className="card-glass p-4">
+                                            <p className="text-white text-sm font-semibold mb-1.5" style={{ fontFamily: 'var(--font-display)' }}>{v.t}</p>
+                                            <p className="text-slate-400 text-xs leading-relaxed">{v.d}</p>
+                                        </div>
                                     ))}
                                 </div>
-                            </div>
+                            </Reveal>
                         </div>
                     </div>
                 </Section>
@@ -583,29 +752,32 @@ export default function App() {
                 {/* ═══════════════════════════════════════
                     LEADERSHIP SECTION
                 ═══════════════════════════════════════ */}
-                <Section id="leadership" className="py-20 md:py-28 px-6 md:px-12 bg-[#000103] border-t border-white/[0.05]">
+                <Section id="leadership" className="py-20 md:py-28 px-6 md:px-12 bg-[#03060f]/45 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
-                        <div className="mb-14 reveal">
+                        <Reveal className="mb-14">
                             <SectionLabel>Leadership</SectionLabel>
                             <h2
-                                className="text-3xl md:text-5xl font-bold tracking-tight uppercase text-white"
-                                style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+                                className="heading-section uppercase text-white"
                             >
                                 The Team Behind<br />
                                 <span className="text-cyan-400">the Mission</span>
                             </h2>
-                        </div>
+                        </Reveal>
 
                         {/* Top row: CEO prominent + COO + CTO */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5"
+                            variants={staggerContainer}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={viewportOnce}
+                        >
                             {team.slice(0, 3).map((person, idx) => (
                                 <motion.article
                                     key={person.name}
                                     id={`leader-${person.role.toLowerCase()}`}
-                                    initial={{ opacity: 0, y: 28 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: '-40px' }}
-                                    transition={{ delay: idx * 0.1, duration: 0.45 }}
+                                    variants={staggerItem}
+                                    whileHover={{ y: -6, transition: spring.snappy }}
                                     className={`card-glass p-7 group ${idx === 0 ? 'md:col-span-1' : ''}`}
                                 >
                                     {/* Monogram */}
@@ -649,18 +821,22 @@ export default function App() {
                                     </a>
                                 </motion.article>
                             ))}
-                        </div>
+                        </motion.div>
 
                         {/* Bottom row: CDO + Consultant */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            {team.slice(3).map((person, idx) => (
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-2 gap-5"
+                            variants={staggerContainer}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={viewportOnce}
+                        >
+                            {team.slice(3).map((person) => (
                                 <motion.article
                                     key={person.name}
                                     id={`leader-${person.role.toLowerCase().replace(' ', '-')}`}
-                                    initial={{ opacity: 0, y: 28 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: '-40px' }}
-                                    transition={{ delay: (idx + 3) * 0.1, duration: 0.45 }}
+                                    variants={staggerItem}
+                                    whileHover={{ y: -6, transition: spring.snappy }}
                                     className="card-glass p-7 group"
                                 >
                                     <div className="flex items-start gap-5">
@@ -683,38 +859,41 @@ export default function App() {
                                     </div>
                                 </motion.article>
                             ))}
-                        </div>
+                        </motion.div>
                     </div>
                 </Section>
 
                 {/* ═══════════════════════════════════════
                     PROGRAMS & INVESTMENT SECTION
                 ═══════════════════════════════════════ */}
-                <Section id="programs" className="py-20 md:py-28 px-6 md:px-12 bg-[#000103] border-t border-white/[0.05]">
+                <Section id="programs" className="py-20 md:py-28 px-6 md:px-12 bg-[#03060f]/45 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
-                        <div className="mb-14 max-w-2xl reveal">
-                            <SectionLabel>Programs & Investment</SectionLabel>
+                        <Reveal className="mb-14 max-w-2xl">
+                            <SectionLabel>Forward Plan · Call to Action</SectionLabel>
                             <h2
-                                className="text-3xl md:text-5xl font-bold tracking-tight uppercase text-white mb-5"
-                                style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+                                className="heading-section uppercase text-white mb-5"
                             >
-                                Strategic Opportunities<br />
-                                <span className="text-cyan-400">for Partners</span>
+                                Engage the<br />
+                                <span className="text-cyan-400">DRONE MARK 1</span>
                             </h2>
                             <p className="body-base text-slate-400 leading-relaxed">
-                                Whether you're an investor, a defence organization, or an aerospace professional — there's a path to build with Davina Aerospace.
+                                The prototype is built, CFD- and MATLAB-validated, and configured for immediate payload integration. Whether you evaluate, co-invest, or build — there is a path to engage Davina now.
                             </p>
-                        </div>
+                        </Reveal>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-                            {programs.map((prog, idx) => (
+                        <motion.div
+                            className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10"
+                            variants={staggerContainer}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={viewportOnce}
+                        >
+                            {programs.map((prog) => (
                                 <motion.div
                                     key={prog.id}
                                     id={prog.id}
-                                    initial={{ opacity: 0, y: 24 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: '-40px' }}
-                                    transition={{ delay: idx * 0.1, duration: 0.45 }}
+                                    variants={staggerItem}
+                                    whileHover={{ y: -6, transition: spring.snappy }}
                                     className={`card-glass p-7 flex flex-col ${prog.highlight ? 'border-cyan-500/25 bg-cyan-900/10' : ''}`}
                                 >
                                     {prog.highlight && (
@@ -737,38 +916,37 @@ export default function App() {
                                     </a>
                                 </motion.div>
                             ))}
-                        </div>
+                        </motion.div>
 
                         {/* Investor pitch strip */}
-                        <div className="rounded-xl border border-amber-500/15 bg-gradient-to-r from-amber-500/[0.05] to-cyan-500/[0.04] p-8 text-center reveal">
+                        <Reveal className="rounded-xl border border-amber-500/15 bg-gradient-to-r from-amber-500/[0.05] to-cyan-500/[0.04] p-8 text-center">
                             <p className="text-white/80 text-sm md:text-base font-light leading-relaxed max-w-2xl mx-auto mb-6" style={{ fontFamily: 'var(--font-display)' }}>
-                                Davina Aerospace is actively seeking{' '}
-                                <span className="text-amber-300 font-medium">strategic investment partners</span>{' '}
-                                to accelerate prototype development, platform testing, and market entry into allied defence markets.
+                                Davina is raising its{' '}
+                                <span className="text-amber-300 font-medium">seed / pre-Series A round</span>{' '}
+                                to fund the transition from validated prototype to Phase 2 interceptor R&D and Phase 3 propellant development — three compounding, independently defensible technology moats.
                             </p>
-                            <a href="#contact" className="btn-primary inline-flex mx-auto">
-                                Request Investor Briefing
+                            <a href="mailto:davinaaerospace@gmail.com?subject=INVESTMENT%20ENQUIRY" className="btn-primary inline-flex mx-auto">
+                                Investment Enquiry
                                 <ArrowUpRight size={13} />
                             </a>
-                        </div>
+                        </Reveal>
                     </div>
                 </Section>
 
                 {/* ═══════════════════════════════════════
                     CONTACT SECTION
                 ═══════════════════════════════════════ */}
-                <Section id="contact" className="py-20 md:py-28 px-6 md:px-12 bg-[#000103] border-t border-white/[0.05]">
+                <Section id="contact" className="py-20 md:py-28 px-6 md:px-12 bg-[#03060f]/45 border-t border-white/[0.05]">
                     <div className="max-w-7xl mx-auto">
-                        <div className="mb-14 reveal">
+                        <Reveal className="mb-14">
                             <SectionLabel>Connect</SectionLabel>
                             <h2
-                                className="text-3xl md:text-5xl font-bold tracking-tight uppercase text-white"
-                                style={{ fontFamily: 'var(--font-display)', letterSpacing: '-0.02em' }}
+                                className="heading-section uppercase text-white"
                             >
                                 Connect with<br />
                                 <span className="text-cyan-400">Leadership</span>
                             </h2>
-                        </div>
+                        </Reveal>
 
                         <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-10 items-start">
                             {/* Left — Company info */}
@@ -780,11 +958,11 @@ export default function App() {
                                     <div>
                                         <p className="label-mono mb-2 text-[0.58rem]">Email</p>
                                         <a
-                                            href="mailto:contact@davinaaerospace.com"
+                                            href="mailto:davinaaerospace@gmail.com"
                                             className="text-white hover:text-cyan-400 transition-colors text-base"
                                             style={{ fontFamily: 'var(--font-display)' }}
                                         >
-                                            contact@davinaaerospace.com
+                                            davinaaerospace@gmail.com
                                         </a>
                                     </div>
                                 </div>
@@ -794,8 +972,8 @@ export default function App() {
                                     </div>
                                     <div>
                                         <p className="label-mono mb-2 text-[0.58rem]">Base of Operations</p>
-                                        <p className="text-white text-base" style={{ fontFamily: 'var(--font-display)' }}>India</p>
-                                        <p className="text-slate-500 text-xs mt-1">Global partnerships welcome</p>
+                                        <p className="text-white text-base" style={{ fontFamily: 'var(--font-display)' }}>Chennai, India</p>
+                                        <p className="text-slate-500 text-xs mt-1">Defence & global partnerships welcome</p>
                                     </div>
                                 </div>
 
@@ -896,7 +1074,7 @@ export default function App() {
                 {/* ═══════════════════════════════════════
                     FOOTER
                 ═══════════════════════════════════════ */}
-                <footer className="bg-[#000103] border-t border-white/[0.05] pt-14 pb-8 px-6 md:px-12">
+                <footer className="bg-[#02040a]/75 border-t border-white/[0.05] pt-14 pb-8 px-6 md:px-12">
                     <div className="max-w-7xl mx-auto">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-10 mb-14">
                             {/* Brand column */}
@@ -904,8 +1082,8 @@ export default function App() {
                                 <div className="w-[120px] mb-4">
                                     <DavinaLogo variant="nav" />
                                 </div>
-                                <p className="text-slate-500 text-xs leading-relaxed mb-4 max-w-[180px]">
-                                    Engineering the autonomous defence platforms of tomorrow — from India to the world.
+                                <p className="text-slate-500 text-xs leading-relaxed mb-4 max-w-[200px]">
+                                    Reusable, material-conservative aerospace and defence technologies — engineered in Chennai to outlast every mission.
                                 </p>
                                 <div className="flex gap-2">
                                     {[
@@ -937,9 +1115,14 @@ export default function App() {
                             <div>
                                 <p className="label-mono text-slate-600 mb-4 text-[0.58rem]">Technology</p>
                                 <nav className="flex flex-col gap-3">
-                                    {['DAVINA Framework', 'Technology Platform', 'Autonomous Systems', 'Avionics'].map(l => (
-                                        <a key={l} href="#technology" className="text-slate-500 text-xs hover:text-slate-300 transition-colors">
-                                            {l}
+                                    {[
+                                        { label: 'Morphing-Wing UAV', href: '#roadmap' },
+                                        { label: 'Reusable Interceptor', href: '#roadmap' },
+                                        { label: 'Space Logistics', href: '#roadmap' },
+                                        { label: 'DAVINA Framework', href: '#mission' },
+                                    ].map(l => (
+                                        <a key={l.label} href={l.href} className="text-slate-500 text-xs hover:text-slate-300 transition-colors">
+                                            {l.label}
                                         </a>
                                     ))}
                                 </nav>
@@ -949,10 +1132,10 @@ export default function App() {
                             <div>
                                 <p className="label-mono text-slate-600 mb-4 text-[0.58rem]">Connect</p>
                                 <div className="flex flex-col gap-3">
-                                    <a href="mailto:contact@davinaaerospace.com" className="text-slate-500 text-xs hover:text-slate-300 transition-colors break-all">
-                                        contact@davinaaerospace.com
+                                    <a href="mailto:davinaaerospace@gmail.com" className="text-slate-500 text-xs hover:text-slate-300 transition-colors break-all">
+                                        davinaaerospace@gmail.com
                                     </a>
-                                    <p className="text-slate-600 text-xs">Base: India</p>
+                                    <p className="text-slate-600 text-xs">Base: Chennai, India</p>
                                     <a href="#contact" className="btn-primary text-[0.6rem] px-3 py-2 mt-1 w-fit">
                                         Investor Brief →
                                     </a>

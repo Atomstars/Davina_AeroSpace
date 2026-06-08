@@ -10,7 +10,9 @@ import * as THREE from 'three';
 
 import TacticalEarth from './canvas/TacticalEarth';
 import HeroDrone from './canvas/HeroDrone';
+import DataStreams from './canvas/DataStreams';
 import { scrollState } from '../lib/scroll';
+import { prefersReducedMotion, isCoarsePointer } from '../lib/device';
 
 /*
  * GLOBE POSITION MATH — radius 9.0, horizon fill target ~45%
@@ -47,14 +49,53 @@ function CinematicCamera({ routeActive }: { routeActive: boolean }) {
         const px = state.pointer.x;
         const py = state.pointer.y;
 
+        /*
+         * CONTINUOUS "BREATHING" DRIFT
+         * ────────────────────────────
+         * A slow multi-frequency orbit so the cinematic frame is never frozen,
+         * even before the user scrolls. Faded out as the dive begins (so it
+         * doesn't fight the scroll move) and zeroed entirely under reduced motion.
+         */
+        const t = state.clock.elapsedTime;
+        const breathAmt = prefersReducedMotion() ? 0 : (1 - p * 0.7);
+        const breathX = (Math.sin(t * 0.12) * 0.55 + Math.sin(t * 0.27) * 0.18) * breathAmt;
+        const breathY = (Math.cos(t * 0.10) * 0.38 + Math.sin(t * 0.33) * 0.12) * breathAmt;
+        const breathZ = (Math.sin(t * 0.08) * 0.65) * breathAmt;
+        const breathLookX = (Math.sin(t * 0.09) * 0.22) * breathAmt;
+        const breathLookY = (Math.cos(t * 0.11) * 0.16) * breathAmt;
+
+        /*
+         * SOLAR-SYSTEM ZOOM-OUT (post-hero)
+         * ─────────────────────────────────
+         * `p` (heroProgress) drives the dive to Earth within the first viewport.
+         * Beyond that, `cruise` (from whole-document progress) re-centres the
+         * camera on the globe and pulls steadily back — so the Earth recedes to a
+         * centred sphere ringed by its orbits and satellites, revealing more of
+         * the system the further you scroll. Scroll-driven (not autonomous), so
+         * it stays active under reduced motion.
+         */
+        const q = scrollState.progress;
+        const cruise = smootherstep(0.08, 0.42, q);    // 0 during hero → 1 mid-page
+        const driftX = Math.sin(q * Math.PI * 1.1) * 1.4;   // gentle lateral life
+
+        const posYHero  = py * 0.6 - p * 5.6;          // descend onto Earth
+        const posZHero  = 24 - p * 8.5;                // push toward the globe
+        const lookYHero = 1.5 - p * 6.5;               // look drops onto Earth
+
+        // Continuous pull-back: Earth shrinks toward frame centre as you scroll.
+        const zoomOutZ = 27 + q * 30;                  // ~27 → ~57 across the page
+        const posY  = THREE.MathUtils.lerp(posYHero, GLOBE_Y + 1.2, cruise);  // ~level with globe centre
+        const posZ  = THREE.MathUtils.lerp(posZHero, zoomOutZ, cruise);
+        const lookY = THREE.MathUtils.lerp(lookYHero, GLOBE_Y, cruise);       // look at globe centre → centred
+
         const normalPos = new THREE.Vector3(
-            px * 0.9,
-            py * 0.6 - p * 5.6,        // descend as we scroll
-            24 - p * 8.5,             // push in toward the globe
+            px * 0.8 + breathX + driftX * cruise,
+            posY + breathY,
+            posZ + breathZ,
         );
         const normalLook = new THREE.Vector3(
-            px * 0.4,
-            1.5 - p * 6.5,            // look drops from horizon down onto Earth
+            px * 0.3 + breathLookX + driftX * 0.25 * cruise,
+            lookY + breathLookY,
             0,
         );
 
@@ -151,9 +192,9 @@ function RealisticStarField() {
     }, []);
 
     // 70% reduction: 400 → 120. Three depth layers.
-    const distant = useMemo(() => makeLayer(70,  150, 260, 0.032, 0.97, 0.55), [makeLayer]);
-    const mid     = useMemo(() => makeLayer(35,  100, 150, 0.055, 0.96, 0.75), [makeLayer]);
-    const near    = useMemo(() => makeLayer(15,   70, 100, 0.090, 0.93, 1.00), [makeLayer]);
+    const distant = useMemo(() => makeLayer(320, 150, 260, 0.032, 0.97, 0.55), [makeLayer]);
+    const mid     = useMemo(() => makeLayer(150, 100, 150, 0.055, 0.96, 0.75), [makeLayer]);
+    const near    = useMemo(() => makeLayer(55,   70, 100, 0.090, 0.93, 1.00), [makeLayer]);
 
     // Differential rotation — depth parallax
     useFrame((state) => {
@@ -180,7 +221,7 @@ function RealisticStarField() {
                     <bufferAttribute attach="attributes-color"    args={[distant.colors, 3]} />
                     <bufferAttribute attach="attributes-size"     args={[distant.sizes, 1]} />
                 </bufferGeometry>
-                <pointsMaterial size={0.10} sizeAttenuation vertexColors transparent opacity={0.70} depthWrite={false} toneMapped={false} />
+                <pointsMaterial size={0.16} sizeAttenuation vertexColors transparent opacity={0.70} depthWrite={false} toneMapped={false} />
             </points>
 
             {/* Mid-field layer */}
@@ -190,7 +231,7 @@ function RealisticStarField() {
                     <bufferAttribute attach="attributes-color"    args={[mid.colors, 3]} />
                     <bufferAttribute attach="attributes-size"     args={[mid.sizes, 1]} />
                 </bufferGeometry>
-                <pointsMaterial size={0.10} sizeAttenuation vertexColors transparent opacity={0.85} depthWrite={false} toneMapped={false} />
+                <pointsMaterial size={0.22} sizeAttenuation vertexColors transparent opacity={0.85} depthWrite={false} toneMapped={false} />
             </points>
 
             {/* Near bright layer */}
@@ -200,7 +241,7 @@ function RealisticStarField() {
                     <bufferAttribute attach="attributes-color"    args={[near.colors, 3]} />
                     <bufferAttribute attach="attributes-size"     args={[near.sizes, 1]} />
                 </bufferGeometry>
-                <pointsMaterial size={0.10} sizeAttenuation vertexColors transparent opacity={0.95} depthWrite={false} toneMapped={false} />
+                <pointsMaterial size={0.30} sizeAttenuation vertexColors transparent opacity={0.95} depthWrite={false} toneMapped={false} />
             </points>
 
             {/* Blue atmospheric nebula — deep-space premium glow */}
@@ -210,89 +251,6 @@ function RealisticStarField() {
         </>
     );
 }
-
-/**
- * PerspectiveGrid — subtle aerospace tactical grid.
- * Reduced opacity and line weight — supports Earth, never competes with content.
- * Fades toward horizon via vertex color gradient.
- */
-function PerspectiveGrid() {
-    const gridRef = useRef<THREE.Group>(null!);
-
-    const { positions, colors } = useMemo(() => {
-        const lines: number[] = [];
-        const cols: number[]  = [];
-        const gridSize  = 80;
-        const cellCount = 20;
-        const step      = gridSize / cellCount;
-        const halfSize  = gridSize / 2;
-
-        // Cyan grid — much lower opacity than before
-        const majorR = 0.03, majorG = 0.48, majorB = 0.72;
-        const minorR = 0.02, minorG = 0.24, minorB = 0.40;
-
-        // Horizontal lines (Z depth) — fade from bright (near) to invisible (far)
-        for (let i = 0; i <= cellCount; i++) {
-            const z       = -halfSize + i * step;
-            const isMajor = i % 5 === 0;
-            // Horizon fade: near (z close to 0) = brighter, far = dimmer
-            const distFade = 1.0 - Math.abs(z / halfSize) * 0.88;
-            const r = (isMajor ? majorR : minorR) * distFade;
-            const g = (isMajor ? majorG : minorG) * distFade;
-            const b = (isMajor ? majorB : minorB) * distFade;
-
-            lines.push(-halfSize, 0, z,  halfSize, 0, z);
-            cols.push(r, g, b, r, g, b);
-        }
-
-        // Vertical lines (X width) — fade from center to edges
-        for (let i = 0; i <= cellCount; i++) {
-            const x       = -halfSize + i * step;
-            const isMajor = i % 5 === 0;
-            // Edge fade: center = brighter, edges = dimmer
-            const edgeFade = 1.0 - Math.abs(x / halfSize) * 0.82;
-            const r = (isMajor ? majorR : minorR) * edgeFade;
-            const g = (isMajor ? majorG : minorG) * edgeFade;
-            const b = (isMajor ? majorB : minorB) * edgeFade;
-
-            lines.push(x, 0, -halfSize,  x, 0, halfSize);
-            cols.push(r, g, b, r, g, b);
-        }
-
-        return {
-            positions: new Float32Array(lines),
-            colors:    new Float32Array(cols),
-        };
-    }, []);
-
-    const materialRef = useRef<THREE.LineBasicMaterial>(null!);
-
-    useEffect(() => {
-        const handleScroll = () => {
-            if (!materialRef.current) return;
-            // Max opacity 0.30 (was 0.5) — grid supports, never dominates
-            const targetOpacity = Math.min(0.30, (window.scrollY / 400) * 0.30);
-            materialRef.current.opacity = targetOpacity;
-        };
-
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    return (
-        <group ref={gridRef} position={[0, GLOBE_Y + 0.5, -10]} rotation={[0.12, 0, 0]}>
-            <lineSegments>
-                <bufferGeometry>
-                    <bufferAttribute attach="attributes-position" args={[positions, 3]} />
-                    <bufferAttribute attach="attributes-color"    args={[colors, 3]} />
-                </bufferGeometry>
-                <lineBasicMaterial ref={materialRef} vertexColors transparent opacity={0.0} depthWrite={false} toneMapped={false} />
-            </lineSegments>
-        </group>
-    );
-}
-
 
 // Battery/performance: pause rendering when tab is not visible
 function usePageVisibility() {
@@ -370,10 +328,6 @@ export default function Scene({
                 {/* Three-layer depth starfield + atmospheric nebula glow */}
                 <RealisticStarField />
 
-                {/* ── PERSPECTIVE GRID ──────────────────────────────────── */}
-                {/* Subtle tactical aerospace grid — supports scene, doesn't dominate */}
-                <PerspectiveGrid />
-
                 {/* ── ENVIRONMENT REFLECTIONS ───────────────────────────── */}
                 {/*
                  * Baked-once studio environment built from Lightformers (no HDR
@@ -401,6 +355,27 @@ export default function Scene({
                         pointer={pointer}
                         routeDefinition={routeDefinition}
                     />
+                    {/*
+                     * Orbital data-streams — a GPU-animated shell of glowing
+                     * points circling the Earth (differential rotation + twinkle,
+                     * ~zero CPU). Gives the Earth's limb real depth and motion.
+                     */}
+                    <group position={[0, GLOBE_Y, 0]}>
+                        <DataStreams count={isCoarsePointer() ? 650 : 1500} color="#3fd0ff" />
+                    </group>
+                    {/*
+                     * Wide cosmic-dust field — a large, slow drifting particle
+                     * volume centred on the space-cruise framing so the content
+                     * backdrop is filled with floating motion, not empty black.
+                     */}
+                    <group position={[0, 3, -4]}>
+                        <DataStreams
+                            count={isCoarsePointer() ? 500 : 1100}
+                            innerRadius={16}
+                            outerRadius={44}
+                            color="#6fb6ec"
+                        />
+                    </group>
                     {/* Drone rendered on top — GLTF with procedural fallback */}
                     <HeroDrone pointer={pointer} />
                 </Suspense>

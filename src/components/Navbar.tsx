@@ -2,14 +2,16 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ArrowUpRight } from 'lucide-react';
 import DavinaLogo from './DavinaLogo';
+import Magnetic from './Magnetic';
 
 const navItems = [
     { label: 'Home',         href: '#home' },
-    { label: 'Technology',   href: '#technology' },
+    { label: 'Solution',     href: '#technology' },
+    { label: 'Roadmap',      href: '#roadmap' },
     { label: 'DAVINA',       href: '#mission' },
-    { label: 'Programs',     href: '#programs' },
     { label: 'Leadership',   href: '#leadership' },
     { label: 'Vision',       href: '#about' },
+    { label: 'Programs',     href: '#programs' },
     { label: 'Contact',      href: '#contact' },
 ];
 
@@ -89,15 +91,17 @@ export default function Navbar() {
                             Investor Brief — bordered button, NOT solid fill.
                             Matches Anduril "Join Us" / Shield AI CTA style.
                         */}
-                        <a
-                            href="#contact"
-                            id="nav-investor-cta"
-                            className="hidden lg:inline-flex items-center gap-2 px-5 py-2 rounded text-sm font-medium text-white/85 border border-white/[0.18] hover:border-cyan-500/40 hover:text-white hover:bg-white/[0.04] transition-all duration-200"
-                            style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.005em' }}
-                        >
-                            Investor Brief
-                            <ArrowUpRight size={14} strokeWidth={2} className="text-cyan-400/70" />
-                        </a>
+                        <Magnetic className="hidden lg:inline-flex">
+                            <a
+                                href="#contact"
+                                id="nav-investor-cta"
+                                className="inline-flex items-center gap-2 px-5 py-2 rounded text-sm font-medium text-white/85 border border-white/[0.18] hover:border-cyan-500/40 hover:text-white hover:bg-white/[0.04] transition-all duration-200"
+                                style={{ fontFamily: 'var(--font-display)', letterSpacing: '0.005em' }}
+                            >
+                                Investor Brief
+                                <ArrowUpRight size={14} strokeWidth={2} className="text-cyan-400/70" />
+                            </a>
+                        </Magnetic>
 
                         {/* Mobile hamburger */}
                         <button
