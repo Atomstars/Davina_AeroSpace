@@ -170,7 +170,7 @@ export default function App() {
             domains: ['Strategy', 'Partnerships', 'Investor Relations'],
         },
         {
-            name: 'Kaushik Goswami', initials: 'KG',
+            name: 'Koushik Goswami', initials: 'KG',
             role: 'COO', title: 'Chief Operations Officer',
             desc: 'Manages daily operations, project execution, manufacturing coordination, and company workflow. Ensures that the vision translates into measurable engineering progress.',
             domains: ['Operations', 'Execution', 'Manufacturing'],
